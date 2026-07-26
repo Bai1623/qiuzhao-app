@@ -6,7 +6,7 @@ const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.1";
+const APP_VERSION = "3.0.2";
 const APP_UPDATED_AT = "2026.07.26";
 
 const STATUSES = [
@@ -136,6 +136,7 @@ let activeMetric = "all";
 let activeModule = "overview";
 let activeAccountPanel = "home";
 let overviewListVisible = false;
+const boardExpandedStatuses = new Set();
 let editingId = null;
 let selectedId = null;
 let draggedId = null;
@@ -1648,42 +1649,135 @@ function renderReminderHub() {
     .join("");
 }
 
+function boardColumnSummaryHTML(statusId, columnRecords) {
+  const total = columnRecords.length;
+  const dueCount = columnRecords.filter(isDue).length;
+  const reminderCount = columnRecords.filter(isReminderActive).length;
+  const overdueCount = columnRecords.filter(isUpdateOverdue).length;
+  const highCount = columnRecords.filter((record) => importanceValue(record) >= 4).length;
+  const staleCount = columnRecords.filter(isStale).length;
+  const topRecord = columnRecords[0];
+  const topText = topRecord
+    ? `${topRecord.company} · ${topRecord.position || "未填写岗位"}`
+    : "暂无记录";
+  const statusHints = {
+    "待初筛": [
+      ["今日待检查", dueCount],
+      ["4-5 星", highCount],
+      ["超过 7 天", staleCount],
+    ],
+    "待测评": [
+      ["12 小时提醒", reminderCount],
+      ["4-5 星", highCount],
+      ["逾期预警", overdueCount],
+    ],
+    "待笔试": [
+      ["12 小时提醒", reminderCount],
+      ["4-5 星", highCount],
+      ["逾期预警", overdueCount],
+    ],
+    "待面试": [
+      ["12 小时提醒", reminderCount],
+      ["4-5 星", highCount],
+      ["逾期预警", overdueCount],
+    ],
+    offer: [
+      ["高价值 offer", highCount],
+      ["待复盘", staleCount],
+      ["逾期预警", overdueCount],
+    ],
+    "已拒绝": [
+      ["可再投递", columnRecords.filter((record) => record.canReapply).length],
+      ["最近拒绝", total ? 1 : 0],
+      ["4-5 星", highCount],
+    ],
+    "可再次投递": [
+      ["上次拒绝", total],
+      ["4-5 星", highCount],
+      ["已置顶", columnRecords.filter((record) => record.pinnedAt).length],
+    ],
+  };
+  const hints = statusHints[statusId] || [
+    ["重点", highCount],
+    ["提醒", reminderCount],
+    ["逾期", overdueCount],
+  ];
+  return `
+    <div class="column-summary">
+      <div class="summary-main">
+        <span>当前模块</span>
+        <strong>${total} 条投递</strong>
+        <em>${escapeHTML(topText)}</em>
+      </div>
+      <div class="summary-chips">
+        ${hints
+          .map(
+            ([label, value]) => `
+              <span class="summary-chip">
+                <strong>${value}</strong>
+                <em>${escapeHTML(label)}</em>
+              </span>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function boardColumnHTML({ statusId, label, records: columnRecords, bodyHTML, droppable = false }) {
+  const isExpanded = boardExpandedStatuses.has(statusId);
+  return `
+    <section class="kanban-column ${isExpanded ? "is-expanded" : "is-collapsed"}" ${droppable ? `data-drop-status="${statusId}"` : ""} data-status="${statusId}">
+      <button class="column-head" type="button" data-toggle-board-status="${statusId}" aria-expanded="${isExpanded ? "true" : "false"}">
+        <div class="column-title">
+          <span class="status-dot"></span>
+          ${escapeHTML(label)}
+        </div>
+        <span class="count-pill">${columnRecords.length}</span>
+        <span class="column-toggle-icon" aria-hidden="true"></span>
+      </button>
+      ${boardColumnSummaryHTML(statusId, columnRecords)}
+      <div class="column-body">
+        ${isExpanded ? bodyHTML : ""}
+      </div>
+    </section>
+  `;
+}
+
 function renderBoard(list) {
   const statusColumns = BOARD_STATUSES.map((status) => {
     const columnRecords = list.filter(
       (record) => record.status === status.id && !(status.id === "已拒绝" && isReapplyRecord(record)),
     );
-    return `
-      <section class="kanban-column" data-drop-status="${status.id}" data-status="${status.id}">
-        <div class="column-head">
-          <div class="column-title">
-            <span class="status-dot"></span>
-            ${status.label}
-          </div>
-          <span class="count-pill">${columnRecords.length}</span>
-        </div>
-        <div class="column-body">
-          ${columnRecords.map(recordCardHTML).join("") || emptyStateHTML()}
-        </div>
-      </section>
-    `;
+    return boardColumnHTML({
+      statusId: status.id,
+      label: status.label,
+      records: columnRecords,
+      bodyHTML: columnRecords.map(recordCardHTML).join("") || emptyStateHTML(),
+      droppable: true,
+    });
   }).join("");
   const reapplyRecords = list.filter(isReapplyRecord);
   els.boardView.innerHTML = `
     ${statusColumns}
-    <section class="kanban-column" data-status="${REAPPLY_STATUS.id}">
-      <div class="column-head">
-        <div class="column-title">
-          <span class="status-dot"></span>
-          ${REAPPLY_STATUS.label}
-        </div>
-        <span class="count-pill">${reapplyRecords.length}</span>
-      </div>
-      <div class="column-body">
-        ${reapplyRecords.map(reapplyCardHTML).join("") || emptyStateHTML()}
-      </div>
-    </section>
+    ${boardColumnHTML({
+      statusId: REAPPLY_STATUS.id,
+      label: REAPPLY_STATUS.label,
+      records: reapplyRecords,
+      bodyHTML: reapplyRecords.map(reapplyCardHTML).join("") || emptyStateHTML(),
+    })}
   `;
+}
+
+function toggleBoardColumn(statusId) {
+  if (!statusId) return;
+  if (boardExpandedStatuses.has(statusId)) {
+    boardExpandedStatuses.delete(statusId);
+  } else {
+    boardExpandedStatuses.add(statusId);
+  }
+  render();
 }
 
 function reapplyCardHTML(record) {
@@ -3488,6 +3582,7 @@ function bindEvents() {
     const pinTarget = event.target.closest("[data-pin-id]");
     const dueCheckedTarget = event.target.closest("[data-due-checked-id]");
     const activeCheckTarget = event.target.closest("[data-active-check-id]");
+    const boardToggleTarget = event.target.closest("[data-toggle-board-status]");
     const quickTarget = event.target.closest("[data-quick-status]");
     const markReapplyTarget = event.target.closest("[data-mark-reapply-id]");
     const filterTarget = event.target.closest("[data-filter-status]");
@@ -3572,6 +3667,12 @@ function bindEvents() {
     if (dueCheckedTarget) {
       event.stopPropagation();
       await markDueChecked(dueCheckedTarget.dataset.dueCheckedId);
+      return;
+    }
+
+    if (boardToggleTarget) {
+      event.stopPropagation();
+      toggleBoardColumn(boardToggleTarget.dataset.toggleBoardStatus);
       return;
     }
 

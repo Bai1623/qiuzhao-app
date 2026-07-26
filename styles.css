@@ -1276,18 +1276,36 @@ label.icon-button:focus-within {
 }
 
 .kanban-column {
-  min-height: 420px;
+  min-height: 178px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.76);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.kanban-column.is-expanded {
+  min-height: 420px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 10px 26px rgba(18, 49, 45, 0.07);
 }
 
 .column-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   margin-bottom: 12px;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.column-head:hover .column-title {
+  color: var(--primary-strong);
 }
 
 .column-title {
@@ -1308,9 +1326,84 @@ label.icon-button:focus-within {
   font-weight: 800;
 }
 
+.column-toggle-icon {
+  width: 18px;
+  height: 18px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.kanban-column.is-expanded .column-toggle-icon {
+  border-color: var(--primary);
+  transform: rotate(225deg) translateY(-2px);
+}
+
+.column-summary {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(18, 49, 45, 0.08);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.82)),
+    var(--surface);
+}
+
+.summary-main {
+  display: grid;
+  gap: 4px;
+}
+
+.summary-main span,
+.summary-main em,
+.summary-chip em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.summary-main strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.summary-main em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--gray-soft);
+}
+
+.summary-chip strong {
+  color: var(--primary-strong);
+  font-size: 18px;
+  line-height: 1;
+}
+
 .column-body {
   display: grid;
   gap: 10px;
+}
+
+.kanban-column.is-collapsed .column-body {
+  display: none;
 }
 
 .record-list-cards {
