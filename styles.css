@@ -1485,6 +1485,7 @@ label.icon-button:focus-within {
 
 .quick-status {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 2px;
 }
@@ -1503,6 +1504,18 @@ label.icon-button:focus-within {
 .quick-status button:hover {
   border-color: var(--primary);
   color: var(--primary-strong);
+}
+
+.quick-status .active-check-action {
+  flex-basis: 100%;
+  border-color: rgba(22, 163, 74, 0.24);
+  color: #15803d;
+  background: rgba(220, 252, 231, 0.82);
+}
+
+.quick-status .active-check-action:hover {
+  border-color: #16a34a;
+  color: #166534;
 }
 
 .quick-status button:disabled {
@@ -1976,7 +1989,7 @@ tbody tr:hover {
   inset: 0 0 0 auto;
   z-index: 11;
   display: flex;
-  width: min(460px, 94vw);
+  width: min(420px, 72vw);
   flex-direction: column;
   border-left: 1px solid var(--line);
   background: var(--surface);
@@ -3051,6 +3064,10 @@ svg {
   .bar-row,
   .star-row {
     grid-template-columns: 84px minmax(0, 1fr) 28px;
+  }
+
+  .detail-drawer {
+    width: 76vw;
   }
 
   .form-grid .wide {

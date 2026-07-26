@@ -22,7 +22,15 @@ assert(app.includes("askDueCheckStatusChange"), "due check should ask whether st
 assert(app.includes("data-due-status"), "due check dialog should offer target statuses");
 assert(!/if \(filterTarget\)[\s\S]{0,400}setModule\("records"\)/.test(app), "status filter should stay in overview");
 assert(!/els\.sortSelect\.addEventListener\("change", render\)/.test(app), "sort changes should render overview results directly");
-assert(app.includes('const APP_VERSION = "3.0.0"'), "app version should be bumped for this iteration");
+assert(app.includes('const APP_VERSION = "3.0.1"'), "app version should be bumped for this iteration");
+assert(app.includes("function getBoardRecords"), "records board should use its own search-only data source");
+assert(app.includes("renderBoard(getBoardRecords())"), "records board should not render from overview filtered records");
+assert(!app.includes("renderBoard(list);"), "records board should not be affected by overview filters");
+assert(app.includes("function markInitialScreenChecked"), "initial-screen records should support proactive check");
+assert(app.includes('data-active-check-id="${record.id}"'), "record cards should show proactive check action");
+assert(app.includes('record.status === "待初筛"'), "proactive check action should only appear on initial-screen records");
+assert(styles.includes("width: min(420px, 72vw);"), "desktop detail drawer should leave part of the screen tappable");
+assert(styles.includes("width: 76vw;"), "mobile detail drawer should cover roughly three quarters of the screen");
 assert(app.includes("const insightMetrics = ["), "profile insights should render compact metric pairs");
 assert(app.includes('class="insight-metrics"'), "profile insights should use a two-column metric grid");
 assert(app.includes("pipelineChartHTML(statusRows, total)"), "status funnel should use the richer pipeline chart renderer");

@@ -6,8 +6,8 @@ const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.0";
-const APP_UPDATED_AT = "2026.07.20";
+const APP_VERSION = "3.0.1";
+const APP_UPDATED_AT = "2026.07.26";
 
 const STATUSES = [
   { id: "待初筛", label: "待初筛" },
@@ -984,29 +984,20 @@ async function offerCalendarCreation(record, status, deadlineISO, note = "") {
   showToast("当前网页版无法打开系统日历，请在 APK 中使用");
 }
 
-function getFilteredRecords() {
-  const query = normalize(els.searchInput.value);
-  const city = els.cityFilter.value;
-  const list = records.filter((record) => {
-    const haystack = normalize(
-      [
-        record.company,
-        record.position,
-        cityText(record),
-        record.note,
-        stars(normalizeImportance(record)),
-      ].join(" "),
-    );
-    const statusMatch = activeStatus === "all" || record.status === activeStatus;
-    const cityMatch = city === "all" || recordCities(record).includes(city);
-    const queryMatch = !query || haystack.includes(query);
-    const metricMatch =
-      activeMetric === "all" ||
-      (activeMetric === "overdue" && isUpdateOverdue(record)) ||
-      (activeMetric === "reapply" && isReapplyRecord(record));
-    return statusMatch && cityMatch && queryMatch && metricMatch;
-  });
+function recordMatchesSearch(record, query) {
+  const haystack = normalize(
+    [
+      record.company,
+      record.position,
+      cityText(record),
+      record.note,
+      stars(normalizeImportance(record)),
+    ].join(" "),
+  );
+  return !query || haystack.includes(query);
+}
 
+function sortRecordsForDisplay(list) {
   return list.sort((a, b) => {
     const overdueDiff = Number(isUpdateOverdue(a)) - Number(isUpdateOverdue(b));
     if (overdueDiff !== 0) return overdueDiff;
@@ -1036,6 +1027,28 @@ function getFilteredRecords() {
         return b.updatedAt.localeCompare(a.updatedAt);
     }
   });
+}
+
+function getFilteredRecords() {
+  const query = normalize(els.searchInput.value);
+  const city = els.cityFilter.value;
+  const list = records.filter((record) => {
+    const statusMatch = activeStatus === "all" || record.status === activeStatus;
+    const cityMatch = city === "all" || recordCities(record).includes(city);
+    const queryMatch = recordMatchesSearch(record, query);
+    const metricMatch =
+      activeMetric === "all" ||
+      (activeMetric === "overdue" && isUpdateOverdue(record)) ||
+      (activeMetric === "reapply" && isReapplyRecord(record));
+    return statusMatch && cityMatch && queryMatch && metricMatch;
+  });
+
+  return sortRecordsForDisplay(list);
+}
+
+function getBoardRecords() {
+  const query = normalize(els.searchInput.value);
+  return sortRecordsForDisplay(records.filter((record) => recordMatchesSearch(record, query)));
 }
 
 function isDue(record) {
@@ -1757,6 +1770,7 @@ function recordCardHTML(record, variant = "") {
         <div class="meta-line">更新于 ${formatDate(record.updatedAt)} · 投递于 ${formatDate(record.appliedAt)}</div>
         ${record.note ? `<div class="meta-line">${escapeHTML(record.note)}</div>` : ""}
         <div class="quick-status" aria-label="快速切换状态">
+          ${record.status === "待初筛" ? `<button class="active-check-action" type="button" data-active-check-id="${record.id}">今日已检查</button>` : ""}
           ${quickStatusButtonsHTML(record)}
         </div>
       </div>
@@ -1965,6 +1979,7 @@ function emptyStateHTML() {
 
 function render() {
   const list = getFilteredRecords();
+  const boardCount = getBoardRecords().length;
   const account = accounts.find((item) => item.id === activeAccountId);
   els.resultMeta.classList.remove("is-warning");
   renderAccountPanel();
@@ -1973,11 +1988,11 @@ function render() {
   renderStats();
   renderDueList();
   renderReminderHub();
-  renderBoard(list);
+  renderBoard(getBoardRecords());
   renderOverviewList(list);
   renderInsights();
   renderCloudBackupPanel();
-  els.resultMeta.textContent = `${account?.name || "当前账号"} · 显示 ${list.length} 条，共 ${records.length} 条`;
+  els.resultMeta.textContent = `${account?.name || "当前账号"} · 显示 ${activeModule === "records" ? boardCount : list.length} 条，共 ${records.length} 条`;
   hydrateIcons(document);
 }
 
@@ -2396,6 +2411,25 @@ async function markDueChecked(id) {
   render();
   if (selectedId === id) openDrawer(id);
   showToast(hasStatusChange ? "状态已更新" : "已更新检查时间");
+}
+
+function markInitialScreenChecked(id) {
+  const record = records.find((item) => item.id === id);
+  if (!record || record.status !== "待初筛") return;
+  const checkedAt = todayISO();
+  record.updatedAt = checkedAt;
+  record.nextCheckAt = addDaysISO(checkedAt, 7);
+  record.note = "主动检查，状态未变更";
+  record.history.unshift({
+    id: uid(),
+    status: record.status,
+    updatedAt: checkedAt,
+    note: "主动检查，状态未变更",
+  });
+  saveRecords();
+  render();
+  if (selectedId === id) openDrawer(id);
+  showToast("今日已检查，下次检查已顺延 7 天");
 }
 
 function deleteRecord(id) {
@@ -3453,6 +3487,7 @@ function bindEvents() {
     const deleteTarget = event.target.closest("[data-delete-id]");
     const pinTarget = event.target.closest("[data-pin-id]");
     const dueCheckedTarget = event.target.closest("[data-due-checked-id]");
+    const activeCheckTarget = event.target.closest("[data-active-check-id]");
     const quickTarget = event.target.closest("[data-quick-status]");
     const markReapplyTarget = event.target.closest("[data-mark-reapply-id]");
     const filterTarget = event.target.closest("[data-filter-status]");
@@ -3537,6 +3572,12 @@ function bindEvents() {
     if (dueCheckedTarget) {
       event.stopPropagation();
       await markDueChecked(dueCheckedTarget.dataset.dueCheckedId);
+      return;
+    }
+
+    if (activeCheckTarget) {
+      event.stopPropagation();
+      markInitialScreenChecked(activeCheckTarget.dataset.activeCheckId);
       return;
     }
 
