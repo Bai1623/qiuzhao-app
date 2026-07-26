@@ -6,7 +6,7 @@ const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.2";
+const APP_VERSION = "3.0.3";
 const APP_UPDATED_AT = "2026.07.26";
 
 const STATUSES = [
@@ -1652,7 +1652,7 @@ function renderReminderHub() {
 function boardColumnSummaryHTML(statusId, columnRecords) {
   const total = columnRecords.length;
   const dueCount = columnRecords.filter(isDue).length;
-  const reminderCount = columnRecords.filter(isReminderActive).length;
+  const reminderCount = columnRecords.filter((record) => isReminderActive(record)).length;
   const overdueCount = columnRecords.filter(isUpdateOverdue).length;
   const highCount = columnRecords.filter((record) => importanceValue(record) >= 4).length;
   const staleCount = columnRecords.filter(isStale).length;

@@ -22,9 +22,10 @@ assert(app.includes("askDueCheckStatusChange"), "due check should ask whether st
 assert(app.includes("data-due-status"), "due check dialog should offer target statuses");
 assert(!/if \(filterTarget\)[\s\S]{0,400}setModule\("records"\)/.test(app), "status filter should stay in overview");
 assert(!/els\.sortSelect\.addEventListener\("change", render\)/.test(app), "sort changes should render overview results directly");
-assert(app.includes('const APP_VERSION = "3.0.2"'), "app version should be bumped for this iteration");
+assert(app.includes('const APP_VERSION = "3.0.3"'), "app version should be bumped for this iteration");
 assert(app.includes("const boardExpandedStatuses = new Set()"), "records board columns should be collapsed by default");
 assert(app.includes("function boardColumnSummaryHTML"), "collapsed board columns should render contextual summary");
+assert(!app.includes("filter(isReminderActive)"), "reminder filters should wrap isReminderActive so Array.filter does not pass the index as the Date argument");
 assert(app.includes("function toggleBoardColumn"), "board columns should expand and collapse from the header");
 assert(app.includes('data-toggle-board-status="${statusId}"'), "board column headers should expose a toggle control");
 assert(app.includes('aria-expanded="${isExpanded ? "true" : "false"}"'), "board column toggles should report expanded state");
