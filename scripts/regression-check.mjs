@@ -22,7 +22,7 @@ assert(app.includes("askDueCheckStatusChange"), "due check should ask whether st
 assert(app.includes("data-due-status"), "due check dialog should offer target statuses");
 assert(!/if \(filterTarget\)[\s\S]{0,400}setModule\("records"\)/.test(app), "status filter should stay in overview");
 assert(!/els\.sortSelect\.addEventListener\("change", render\)/.test(app), "sort changes should render overview results directly");
-assert(app.includes('const APP_VERSION = "3.0.3"'), "app version should be bumped for this iteration");
+assert(app.includes('const APP_VERSION = "3.0.4"'), "app version should be bumped for this iteration");
 assert(app.includes("const boardExpandedStatuses = new Set()"), "records board columns should be collapsed by default");
 assert(app.includes("function boardColumnSummaryHTML"), "collapsed board columns should render contextual summary");
 assert(!app.includes("filter(isReminderActive)"), "reminder filters should wrap isReminderActive so Array.filter does not pass the index as the Date argument");
@@ -33,6 +33,9 @@ assert(app.includes('class="kanban-column ${isExpanded ? "is-expanded" : "is-col
 assert(styles.includes(".kanban-column.is-collapsed .column-body"), "collapsed board columns should hide card bodies");
 assert(styles.includes(".column-summary"), "collapsed board columns should have a designed summary area");
 assert(styles.includes(".column-toggle-icon"), "board column toggles should have an expansion indicator");
+assert(styles.includes(".column-toggle-icon::before"), "board column toggles should use a small chevron instead of a large border arrow");
+assert(styles.includes("rotate(135deg)"), "collapsed board column chevron should point left");
+assert(styles.includes("rotate(45deg)"), "expanded board column chevron should point down");
 assert(app.includes("function getBoardRecords"), "records board should use its own search-only data source");
 assert(app.includes("renderBoard(getBoardRecords())"), "records board should not render from overview filtered records");
 assert(!app.includes("renderBoard(list);"), "records board should not be affected by overview filters");
