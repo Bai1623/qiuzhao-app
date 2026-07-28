@@ -3076,9 +3076,9 @@ async function checkAndOfferCloudSyncRestore(trigger = "manual", cloudResult = n
     }
 
     const confirmMessage =
-      cloudRecordCount <= localRecordCount
-        ? "云端备份数据小于当前账号数据，是否覆盖本地数据？"
-        : "当前本地已有数据，可能不是最新数据，是否覆盖本地数据？";
+      cloudRecordCount < localRecordCount
+        ? "云端备份数据小于当前账号数据，是否覆盖本地数据？请谨慎操作！！"
+        : "当前本地已有投递数据，可能不是最新数据，是否覆盖本地数据？";
 
     const confirmed = await askActionConfirm({
       title: "检测到云端备份",

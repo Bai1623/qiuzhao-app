@@ -99,8 +99,8 @@ assert(app.includes('action: "account-create"'), "new cloud accounts should be e
 assert(app.includes('action: "account-sync-put"'), "new backups should update the account-password sync index");
 assert(app.includes('action: "account-sync-get"'), "manual cloud checks should use the account-password sync index");
 assert(app.includes("checkAndOfferCloudSyncRestore"), "app should offer restore when a cloud sync backup exists");
-assert(app.includes("云端备份数据小于当前账号数据，是否覆盖本地数据"), "cloud restore should prompt when cloud backup is smaller than local");
-assert(app.includes("当前本地已有数据，可能不是最新数据，是否覆盖本地数据"), "cloud restore should prompt when local data may not be up to date");
+assert(app.includes("云端备份数据小于当前账号数据，是否覆盖本地数据？请谨慎操作！！"), "cloud restore should prompt when cloud backup is smaller than local");
+assert(app.includes("当前本地已有投递数据，可能不是最新数据，是否覆盖本地数据？"), "cloud restore should prompt when local data may not be up to date");
 assert(cloudbaseFunction.includes('action === "account-login"'), "CloudBase function should support account-login");
 assert(cloudbaseFunction.includes('action === "account-create"'), "CloudBase function should support account-create");
 assert(cloudbaseFunction.includes('action === "account-sync-put"'), "CloudBase function should support account-sync-put");
