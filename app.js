@@ -6,8 +6,8 @@ const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.4";
-const APP_UPDATED_AT = "2026.07.26";
+const APP_VERSION = "3.0.5";
+const APP_UPDATED_AT = "2026.07.28";
 
 const STATUSES = [
   { id: "待初筛", label: "待初筛" },
@@ -3047,6 +3047,9 @@ async function checkAndOfferCloudSyncRestore(trigger = "manual", cloudResult = n
     }
     const latest = result?.latest || result;
     const latestShareId = latest?.latestShareId || latest?.shareId || "";
+    const cloudRecordCount = Number(latest?.recordCount || 0);
+    const localRecordCount = Array.isArray(records) ? records.length : 0;
+    const accountName = settings.accountName || activeAccount().name;
     if (!latestShareId) {
       if (trigger === "login") {
         setAccountFeedback("云端暂无数据。现在开始秋招吧！", "success");
@@ -3058,9 +3061,28 @@ async function checkAndOfferCloudSyncRestore(trigger = "manual", cloudResult = n
       return false;
     }
 
+    if (!localRecordCount) {
+      const nextRecords = await importCloudShare(latestShareId);
+      applyImportedRecords(nextRecords);
+      const autoRestoreMessage = "本地无数据，已恢复云端备份。";
+      if (trigger === "manual") {
+        setCloudSyncFeedback(autoRestoreMessage, "success");
+        showToast("云端备份已恢复");
+      } else {
+        setAccountFeedback(autoRestoreMessage, "success");
+        setCloudSyncFeedback(autoRestoreMessage, "success");
+      }
+      return true;
+    }
+
+    const confirmMessage =
+      cloudRecordCount <= localRecordCount
+        ? "云端备份数据小于当前账号数据，是否覆盖本地数据？"
+        : "当前本地已有数据，可能不是最新数据，是否覆盖本地数据？";
+
     const confirmed = await askActionConfirm({
       title: "检测到云端备份",
-      message: `云端有「${settings.accountName || activeAccount().name}」的最新备份，约 ${latest.recordCount || 0} 条记录。是否恢复到当前设备？`,
+      message: `云端有「${accountName}」的最新备份，约 ${cloudRecordCount} 条记录。${confirmMessage}`,
       confirmLabel: "恢复",
       cancelLabel: "取消",
       tone: "info",
