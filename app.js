@@ -150,6 +150,8 @@ let statusDeadlineResolve = null;
 let dueStatusResolve = null;
 let cloudShareRequestPending = false;
 let cloudBackupRequestPending = false;
+const accountPanelTransitionMs = 220;
+const accountPanelExitTimerById = new Map();
 
 const els = {
   searchInput: document.querySelector("#searchInput"),
@@ -1143,9 +1145,42 @@ function setAccountFeedback(message = "每个账号的数据本地隔离保存�
 
 function showAccountPanel(panel = "home") {
   activeAccountPanel = ["home", "login", "admin"].includes(panel) ? panel : "home";
-  els.accountHomePanel?.classList.toggle("hidden", activeAccountPanel !== "home");
-  els.accountLoginPanel?.classList.toggle("hidden", activeAccountPanel !== "login");
-  els.accountAdminPanel?.classList.toggle("hidden", activeAccountPanel !== "admin");
+  const panelMap = {
+    home: els.accountHomePanel,
+    login: els.accountLoginPanel,
+    admin: els.accountAdminPanel,
+  };
+
+  Object.entries(panelMap).forEach(([panelId, panelEl]) => {
+    if (!panelEl) return;
+
+    const isActive = panelId === activeAccountPanel;
+    const prevTimer = accountPanelExitTimerById.get(panelId);
+    if (prevTimer) {
+      window.clearTimeout(prevTimer);
+      accountPanelExitTimerById.delete(panelId);
+    }
+
+    if (isActive) {
+      panelEl.classList.remove("hidden");
+      panelEl.classList.remove("is-panel-leave");
+      panelEl.classList.add("is-panel-enter");
+      void panelEl.offsetHeight;
+      requestAnimationFrame(() => {
+        panelEl.classList.remove("is-panel-enter");
+        panelEl.classList.add("is-panel-visible");
+      });
+      return;
+    }
+
+    panelEl.classList.remove("is-panel-visible");
+    panelEl.classList.add("is-panel-leave");
+    const timer = window.setTimeout(() => {
+      panelEl.classList.remove("is-panel-leave");
+      panelEl.classList.add("hidden");
+    }, accountPanelTransitionMs);
+    accountPanelExitTimerById.set(panelId, timer);
+  });
 
   if (activeAccountPanel === "login") {
     window.setTimeout(() => els.newAccountNameInput?.focus({ preventScroll: true }), 80);

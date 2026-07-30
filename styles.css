@@ -155,18 +155,30 @@ label.icon-button:focus-within {
   gap: 12px;
   margin: -14px 0 18px;
   padding: 14px;
-  border: 1px solid rgba(250, 204, 21, 0.22);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(13, 148, 136, 0.18);
   border-radius: var(--radius);
   color: #f8fafc;
   background:
-    linear-gradient(145deg, rgba(250, 204, 21, 0.08), transparent 42%),
-    #173332;
+    linear-gradient(140deg, rgba(13, 148, 136, 0.2), rgba(15, 23, 42, 0.06)),
+    linear-gradient(180deg, #173332, #0f172a);
   box-shadow: 0 24px 58px rgba(10, 34, 32, 0.26);
   animation: accountMenuIn 180ms ease both;
 }
 
+.account-menu::before {
+  content: "";
+  position: absolute;
+  inset: -40% auto auto -8%;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
 .account-menu-head,
-.account-input-row,
 .delete-confirm {
   display: flex;
   align-items: center;
@@ -189,6 +201,46 @@ label.icon-button:focus-within {
 
 .account-menu .section-label {
   color: #facc15;
+}
+
+.account-panel-stack {
+  display: grid;
+  position: relative;
+  z-index: 1;
+  max-height: min(68vh, 640px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.account-subpanel {
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  opacity: 0;
+  transform: translate3d(18px, 0, 0) scale(0.985);
+  filter: blur(1.5px);
+  pointer-events: none;
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease;
+}
+
+.account-subpanel.is-panel-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+.account-subpanel.is-panel-leave {
+  opacity: 0;
+  transform: translate3d(-14px, 0, 0) scale(0.985);
+  filter: blur(2px);
 }
 
 .account-list {
@@ -257,22 +309,56 @@ label.icon-button:focus-within {
 }
 
 .text-entry-button {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 44px;
   border: 1px solid rgba(226, 232, 240, 0.22);
   border-radius: var(--radius);
   color: #fef3c7;
-  background: rgba(15, 23, 42, 0.24);
+  background:
+    linear-gradient(170deg, rgba(14, 116, 110, 0.2), rgba(15, 23, 42, 0.5)),
+    rgba(15, 23, 42, 0.16);
   font-weight: 900;
+  line-height: 1;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
-    background 180ms ease;
+    background 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .text-entry-button:hover {
   border-color: rgba(250, 204, 21, 0.62);
-  background: rgba(250, 204, 21, 0.12);
+  background:
+    linear-gradient(170deg, rgba(250, 204, 21, 0.18), rgba(249, 115, 22, 0.15)),
+    rgba(250, 204, 21, 0.08);
+  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.16);
   transform: translateY(-1px);
+}
+
+.account-auth-copy {
+  margin: -4px 0 2px;
+  padding: 10px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: var(--radius);
+  color: #d6e5e1;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.account-auth-copy p {
+  margin: 0;
+  color: #e5ebe9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.account-field-group {
+  display: grid;
+  gap: 6px;
 }
 
 .account-subpanel-head {
@@ -403,6 +489,13 @@ label.icon-button:focus-within {
   font-weight: 800;
 }
 
+.account-field-group label {
+  margin: 0;
+  color: #fef3c7;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .account-help {
   margin: 0;
   color: #cbd5e1;
@@ -487,7 +580,9 @@ label.icon-button:focus-within {
 }
 
 .account-input-row {
+  display: flex;
   align-items: stretch;
+  gap: 8px;
 }
 
 .account-input-row input,
@@ -502,6 +597,18 @@ label.icon-button:focus-within {
   background: rgba(15, 23, 42, 0.38);
 }
 
+.account-field-group > input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: var(--radius);
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.38);
+  font-size: 14px;
+}
+
 .account-menu input::placeholder {
   color: rgba(226, 232, 240, 0.72);
 }
@@ -510,6 +617,7 @@ label.icon-button:focus-within {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   border-color: rgba(226, 232, 240, 0.24);
   color: #f8fafc;
   background: rgba(255, 255, 255, 0.1);
