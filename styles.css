@@ -156,8 +156,7 @@ label.icon-button:focus-within {
   margin: -14px 0 18px;
   padding: 14px;
   position: relative;
-  max-height: min(76vh, 720px);
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid rgba(13, 148, 136, 0.18);
   border-radius: var(--radius);
   color: #f8fafc;
@@ -166,7 +165,6 @@ label.icon-button:focus-within {
     linear-gradient(180deg, #173332, #0f172a);
   box-shadow: 0 24px 58px rgba(10, 34, 32, 0.26);
   animation: accountMenuIn 180ms ease both;
-  scrollbar-width: thin;
 }
 
 .account-menu::before {
