@@ -3,10 +3,11 @@ const ACCOUNTS_KEY = "campus-application-tracker:accounts:v1";
 const ACTIVE_ACCOUNT_KEY = "campus-application-tracker:active-account:v1";
 const ACCOUNT_RECORDS_PREFIX = "campus-application-tracker:records:v1:";
 const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
+const LONG_APPLIED_MONTHS_KEY = "campus-application-tracker:long-applied-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.6";
+const APP_VERSION = "3.0.7";
 const APP_UPDATED_AT = "2026.08.07";
 
 const STATUSES = [
@@ -80,7 +81,7 @@ const CITY_OPTIONS = [
 ];
 const STALE_DAYS = 7;
 const DEFAULT_OVERDUE_MONTHS = 2;
-const LONG_APPLIED_MONTHS = 3;
+const DEFAULT_LONG_APPLIED_MONTHS = 3;
 const MAX_RECORD_CITIES = 3;
 const REMINDER_ALERT_WINDOW_MS = 12 * 60 * 60 * 1000;
 const DEADLINE_REQUIRED_STATUSES = new Set(["待测评", "待笔试", "待面试"]);
@@ -148,6 +149,7 @@ let masterPasswordUnlocked = false;
 let toastTimer = null;
 let swipeState = null;
 let actionConfirmResolve = null;
+let actionConfirmDismissValue = false;
 let statusDeadlineResolve = null;
 let dueStatusResolve = null;
 let cloudShareRequestPending = false;
@@ -194,6 +196,7 @@ const els = {
   cityFilter: document.querySelector("#cityFilter"),
   sortSelect: document.querySelector("#sortSelect"),
   overdueMonthsInput: document.querySelector("#overdueMonthsInput"),
+  longAppliedMonthsInput: document.querySelector("#longAppliedMonthsInput"),
   dueList: document.querySelector("#dueList"),
   statsGrid: document.querySelector("#statsGrid"),
   resultMeta: document.querySelector("#resultMeta"),
@@ -377,8 +380,9 @@ function isReapplyRecord(record) {
 }
 
 function isLongAppliedRecord(record) {
+  if (record?.longAppliedManual) return true;
   if (!record?.appliedAt) return false;
-  return record.appliedAt < addMonthsISO(todayISO(), -LONG_APPLIED_MONTHS);
+  return record.appliedAt < addMonthsISO(todayISO(), -longAppliedMonthsThreshold());
 }
 
 function reminderDeadline(record) {
@@ -706,16 +710,33 @@ function overdueMonthsThreshold() {
   return Number.isFinite(value) && value >= 1 ? value : DEFAULT_OVERDUE_MONTHS;
 }
 
+function longAppliedMonthsThreshold() {
+  const value = Number.parseInt(els.longAppliedMonthsInput?.value || "", 10);
+  return Number.isFinite(value) && value >= 1 ? value : DEFAULT_LONG_APPLIED_MONTHS;
+}
+
 function loadOverdueMonthsSetting() {
   const stored = Number.parseInt(localStorage.getItem(OVERDUE_MONTHS_KEY) || "", 10);
   const value = Number.isFinite(stored) && stored >= 1 ? stored : DEFAULT_OVERDUE_MONTHS;
   els.overdueMonthsInput.value = String(value);
 }
 
+function loadLongAppliedMonthsSetting() {
+  const stored = Number.parseInt(localStorage.getItem(LONG_APPLIED_MONTHS_KEY) || "", 10);
+  const value = Number.isFinite(stored) && stored >= 1 ? stored : DEFAULT_LONG_APPLIED_MONTHS;
+  if (els.longAppliedMonthsInput) els.longAppliedMonthsInput.value = String(value);
+}
+
 function saveOverdueMonthsSetting() {
   const value = overdueMonthsThreshold();
   els.overdueMonthsInput.value = String(value);
   localStorage.setItem(OVERDUE_MONTHS_KEY, String(value));
+}
+
+function saveLongAppliedMonthsSetting() {
+  const value = longAppliedMonthsThreshold();
+  if (els.longAppliedMonthsInput) els.longAppliedMonthsInput.value = String(value);
+  localStorage.setItem(LONG_APPLIED_MONTHS_KEY, String(value));
 }
 
 function activeAccount() {
@@ -813,8 +834,9 @@ function closeActiveDialog() {
   const activeDialog = document.querySelector(".record-dialog.is-open");
   if (activeDialog) {
     if (activeDialog === els.actionConfirmDialog && actionConfirmResolve) {
-      actionConfirmResolve(false);
+      actionConfirmResolve(actionConfirmDismissValue);
       actionConfirmResolve = null;
+      actionConfirmDismissValue = false;
     }
     if (activeDialog === els.statusDeadlineDialog && statusDeadlineResolve) {
       statusDeadlineResolve(null);
@@ -842,11 +864,13 @@ function askActionConfirm({
   confirmLabel = "确认",
   cancelLabel = "取消",
   tone = "default",
+  dismissValue = false,
 } = {}) {
   if (actionConfirmResolve) {
     actionConfirmResolve(false);
     actionConfirmResolve = null;
   }
+  actionConfirmDismissValue = dismissValue;
   els.actionConfirmDialog.dataset.tone = tone;
   els.actionConfirmTitle.textContent = title;
   els.actionConfirmMessage.textContent = message;
@@ -863,6 +887,7 @@ function resolveActionConfirm(value) {
   if (!actionConfirmResolve) return;
   actionConfirmResolve(value);
   actionConfirmResolve = null;
+  actionConfirmDismissValue = false;
   closeDialog(els.actionConfirmDialog);
 }
 
@@ -921,6 +946,18 @@ function askDueCheckStatusChange(record) {
     confirmLabel: "是，选择状态",
     cancelLabel: "否，仅更新检查时间",
     tone: "check",
+    dismissValue: null,
+  });
+}
+
+function askLongAppliedManual(record) {
+  return askActionConfirm({
+    title: "加入更新时间过长？",
+    message: `是否将「${record.company || "这家公司"}」加入「${LONG_APPLIED_STATUS.label}」分类？之后也可以通过修改投递日期或月数规则自动调整。`,
+    confirmLabel: "加入分类",
+    cancelLabel: "不加入",
+    tone: "check",
+    dismissValue: null,
   });
 }
 
@@ -1758,7 +1795,7 @@ function boardColumnSummaryHTML(statusId, columnRecords) {
       ["已置顶", columnRecords.filter((record) => record.pinnedAt).length],
     ],
     [LONG_APPLIED_STATUS.id]: [
-      [`投递超 ${LONG_APPLIED_MONTHS} 个月`, longAppliedCount],
+      [`投递超 ${longAppliedMonthsThreshold()} 个月`, longAppliedCount],
       ["4-5 星", highCount],
       ["已拒绝", columnRecords.filter((record) => record.status === "已拒绝").length],
     ],
@@ -1912,7 +1949,7 @@ function recordCardHTML(record, variant = "") {
   const tags = [
     pinned ? `<span class="tag pin-tag">已置顶</span>` : "",
     `<span class="tag status-badge">${escapeHTML(record.status)}</span>`,
-    longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · 投递超 ${LONG_APPLIED_MONTHS} 个月</span>` : "",
+    longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · ${record.longAppliedManual ? "手动加入" : `投递超 ${longAppliedMonthsThreshold()} 个月`}</span>` : "",
     `<span class="tag city-tag">${escapeHTML(cityText(record))}</span>`,
     record.importantReminderAt
       ? `<span class="tag ${activeReminder ? "danger" : "reminder-tag"}">重要提醒 · ${formatDateTime(record.importantReminderAt)}</span>`
@@ -2047,7 +2084,7 @@ function renderInsights() {
     {
       label: LONG_APPLIED_STATUS.label,
       value: String(longAppliedCount),
-      detail: `投递日期超过 ${LONG_APPLIED_MONTHS} 个月`,
+      detail: `投递日期超过 ${longAppliedMonthsThreshold()} 个月`,
       tone: "alert",
     },
     {
@@ -2363,6 +2400,7 @@ function formToRecord(base = null) {
     rejectedDurationMs: Number(base?.rejectedDurationMs || 0),
     canReapply: Boolean(base?.canReapply),
     reapplyRecord: base?.reapplyRecord || null,
+    longAppliedManual: Boolean(base?.longAppliedManual),
     note,
     history: base?.history?.length
       ? [...base.history]
@@ -2574,9 +2612,15 @@ async function markDueChecked(id) {
   const record = records.find((item) => item.id === id);
   if (!record) return;
   const hasStatusChange = await askDueCheckStatusChange(record);
+  if (hasStatusChange === null) return;
+  let nextStatus = "";
   if (hasStatusChange) {
-    const nextStatus = await askDueStatus(record);
+    nextStatus = await askDueStatus(record);
     if (!nextStatus) return;
+  }
+  const shouldMarkLongApplied = await askLongAppliedManual(record);
+  if (shouldMarkLongApplied === null) return;
+  if (hasStatusChange) {
     const changed = await setRecordStatus(record, nextStatus, `已检查，状态变更为${nextStatus}`, true);
     if (!changed) return;
   } else {
@@ -2589,6 +2633,7 @@ async function markDueChecked(id) {
       note: "已检查，状态未变更",
     });
   }
+  record.longAppliedManual = Boolean(shouldMarkLongApplied);
   record.nextCheckAt = addDaysISO(todayISO(), 7);
   saveRecords();
   render();
@@ -2672,7 +2717,7 @@ function drawerHTML(record) {
           <div class="detail-meta">
             <span class="tag status-badge">${escapeHTML(record.status)}</span>
             <span class="importance-badge">${stars(importance)}</span>
-            ${longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · 投递超 ${LONG_APPLIED_MONTHS} 个月</span>` : ""}
+            ${longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · ${record.longAppliedManual ? "手动加入" : `投递超 ${longAppliedMonthsThreshold()} 个月`}</span>` : ""}
             ${updateOverdue ? `<span class="tag danger">逾期预警 · ${monthsBetween(record.updatedAt)} 个月未更新</span>` : ""}
             ${record.importantReminderAt ? `<span class="tag ${isReminderActive(record) ? "danger" : "reminder-tag"}">重要提醒 · ${formatDateTime(record.importantReminderAt)}</span>` : ""}
             ${isDue(record) ? '<span class="tag warn">今日待检查</span>' : ""}
@@ -2779,6 +2824,7 @@ function normalizeImportedRecords(input) {
     rejectedDurationMs: Number(record.rejectedDurationMs || 0),
     canReapply: Boolean(record.canReapply),
     reapplyRecord: record.reapplyRecord || null,
+    longAppliedManual: Boolean(record.longAppliedManual),
     note: record.note || "",
     history: Array.isArray(record.history) ? record.history : [],
   }));
@@ -3669,6 +3715,15 @@ function bindEvents() {
     saveOverdueMonthsSetting();
     revealOverviewList(false);
   });
+  els.longAppliedMonthsInput?.addEventListener("change", () => {
+    saveLongAppliedMonthsSetting();
+    revealOverviewList(true);
+  });
+  els.longAppliedMonthsInput?.addEventListener("input", () => {
+    if (!els.longAppliedMonthsInput.value) return;
+    saveLongAppliedMonthsSetting();
+    revealOverviewList(false);
+  });
   els.recordForm.addEventListener("submit", saveFromForm);
   els.recordForm.elements.importantReminderType.addEventListener("change", updateImportantReminderFields);
   els.recordForm.elements.cities.addEventListener("change", enforceCitySelectionLimit);
@@ -4011,12 +4066,14 @@ function init() {
     localStorage.removeItem(ACCOUNTS_KEY);
     localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
     localStorage.removeItem(OVERDUE_MONTHS_KEY);
+    localStorage.removeItem(LONG_APPLIED_MONTHS_KEY);
     localStorage.removeItem(MASTER_PASSWORD_KEY);
     window.history.replaceState(null, "", window.location.pathname);
   }
   hydrateIcons(document);
   populateSelects();
   loadOverdueMonthsSetting();
+  loadLongAppliedMonthsSetting();
   loadAccounts();
   loadRecords();
   configureRuntimeContext();
