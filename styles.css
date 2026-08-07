@@ -2979,6 +2979,11 @@ tbody tr:hover {
   --status-bg: #cffafe;
 }
 
+[data-status="更新时间过长"] {
+  --status-color: #be123c;
+  --status-bg: #ffe4e6;
+}
+
 [data-status] .status-dot {
   background: var(--status-color);
 }
@@ -3030,6 +3035,18 @@ tbody tr:hover {
   box-shadow: 0 12px 34px rgba(217, 119, 6, 0.12);
 }
 
+.record-card[data-long-applied="true"] .record-card-surface {
+  border-color: rgba(190, 18, 60, 0.32);
+  background:
+    linear-gradient(135deg, rgba(190, 18, 60, 0.11), transparent 46%),
+    #fff7ed;
+}
+
+.long-applied-tag {
+  color: #9f1239;
+  background: #ffe4e6;
+}
+
 .record-card[data-update-overdue="true"] .record-card-surface {
   --importance-color: #991b1b;
   --importance-bg: #fee2e2;
@@ -3053,6 +3070,12 @@ tr[data-update-overdue="true"]:hover {
   background:
     linear-gradient(135deg, rgba(153, 27, 27, 0.18), transparent 42%),
     #fff1f2;
+}
+
+.drawer-head[data-long-applied="true"] {
+  background:
+    linear-gradient(135deg, rgba(190, 18, 60, 0.12), transparent 44%),
+    #fff7ed;
 }
 
 .status-badge {

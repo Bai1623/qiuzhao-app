@@ -6,8 +6,8 @@ const OVERDUE_MONTHS_KEY = "campus-application-tracker:overdue-months:v1";
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.5";
-const APP_UPDATED_AT = "2026.07.28";
+const APP_VERSION = "3.0.6";
+const APP_UPDATED_AT = "2026.08.07";
 
 const STATUSES = [
   { id: "待初筛", label: "待初筛" },
@@ -21,6 +21,7 @@ const BOARD_STATUSES = ["待测评", "待笔试", "待面试", "待初筛", "off
   .map((id) => STATUSES.find((status) => status.id === id))
   .filter(Boolean);
 const REAPPLY_STATUS = { id: "可再次投递", label: "可再次投递" };
+const LONG_APPLIED_STATUS = { id: "更新时间过长", label: "更新时间过长" };
 const CREATE_STATUSES = STATUSES.filter((status) => ["待初筛", "待笔试"].includes(status.id));
 const QUICK_FLOW_STATUSES = STATUSES.filter((status) => status.id !== "待初筛");
 
@@ -79,6 +80,7 @@ const CITY_OPTIONS = [
 ];
 const STALE_DAYS = 7;
 const DEFAULT_OVERDUE_MONTHS = 2;
+const LONG_APPLIED_MONTHS = 3;
 const MAX_RECORD_CITIES = 3;
 const REMINDER_ALERT_WINDOW_MS = 12 * 60 * 60 * 1000;
 const DEADLINE_REQUIRED_STATUSES = new Set(["待测评", "待笔试", "待面试"]);
@@ -374,6 +376,11 @@ function isReapplyRecord(record) {
   return Boolean(record?.canReapply);
 }
 
+function isLongAppliedRecord(record) {
+  if (!record?.appliedAt) return false;
+  return record.appliedAt < addMonthsISO(todayISO(), -LONG_APPLIED_MONTHS);
+}
+
 function reminderDeadline(record) {
   if (!record?.importantReminderAt || record.importantReminderType === "none") return null;
   const date = new Date(record.importantReminderAt);
@@ -538,7 +545,7 @@ function insightMetricHTML(metric) {
 }
 
 function pipelineChartHTML(statusRows, total) {
-  const orderedRows = BOARD_STATUSES.map((status) => statusRows.find((row) => row.status === status.id))
+  const orderedRows = [...BOARD_STATUSES, LONG_APPLIED_STATUS].map((status) => statusRows.find((row) => row.status === status.id))
     .filter(Boolean);
   const maxCount = Math.max(1, ...orderedRows.map((row) => row.count));
   return `
@@ -1005,6 +1012,9 @@ function sortRecordsForDisplay(list) {
     const overdueDiff = Number(isUpdateOverdue(a)) - Number(isUpdateOverdue(b));
     if (overdueDiff !== 0) return overdueDiff;
 
+    const longAppliedDiff = Number(isLongAppliedRecord(a)) - Number(isLongAppliedRecord(b));
+    if (longAppliedDiff !== 0) return longAppliedDiff;
+
     if (!isUpdateOverdue(a) && !isUpdateOverdue(b)) {
       const pinnedDiff = Number(Boolean(b.pinnedAt)) - Number(Boolean(a.pinnedAt));
       if (pinnedDiff !== 0) return pinnedDiff;
@@ -1036,13 +1046,17 @@ function getFilteredRecords() {
   const query = normalize(els.searchInput.value);
   const city = els.cityFilter.value;
   const list = records.filter((record) => {
-    const statusMatch = activeStatus === "all" || record.status === activeStatus;
+    const longApplied = isLongAppliedRecord(record);
+    const statusMatch =
+      activeStatus === "all" ||
+      (activeStatus === LONG_APPLIED_STATUS.id && longApplied) ||
+      (record.status === activeStatus && !longApplied);
     const cityMatch = city === "all" || recordCities(record).includes(city);
     const queryMatch = recordMatchesSearch(record, query);
     const metricMatch =
       activeMetric === "all" ||
       (activeMetric === "overdue" && isUpdateOverdue(record)) ||
-      (activeMetric === "reapply" && isReapplyRecord(record));
+      (activeMetric === "reapply" && isReapplyRecord(record) && !longApplied);
     return statusMatch && cityMatch && queryMatch && metricMatch;
   });
 
@@ -1082,13 +1096,18 @@ function renderStatusFilters() {
     { id: "all", label: "全部记录", count: allCount, metric: "all" },
     ...STATUSES.map((status) => ({
       ...status,
-      count: records.filter((record) => record.status === status.id).length,
+      count: records.filter((record) => record.status === status.id && !isLongAppliedRecord(record)).length,
       metric: "all",
     })),
     {
+      ...LONG_APPLIED_STATUS,
+      count: records.filter(isLongAppliedRecord).length,
+      metric: "all",
+    },
+    {
       id: "all",
       label: REAPPLY_STATUS.label,
-      count: records.filter(isReapplyRecord).length,
+      count: records.filter((record) => isReapplyRecord(record) && !isLongAppliedRecord(record)).length,
       metric: "reapply",
       statusId: REAPPLY_STATUS.id,
     },
@@ -1607,10 +1626,16 @@ function renderStats() {
     { label: "总投递", value: records.length, status: "all", metric: "all" },
     ...STATUSES.map((status) => ({
       label: status.label,
-      value: records.filter((record) => record.status === status.id).length,
+      value: records.filter((record) => record.status === status.id && !isLongAppliedRecord(record)).length,
       status: status.id,
       metric: "all",
     })),
+    {
+      label: LONG_APPLIED_STATUS.label,
+      value: records.filter(isLongAppliedRecord).length,
+      status: LONG_APPLIED_STATUS.id,
+      metric: "all",
+    },
     {
       label: `逾期预警`,
       value: records.filter(isUpdateOverdue).length,
@@ -1619,7 +1644,7 @@ function renderStats() {
     },
     {
       label: "可再次投递",
-      value: records.filter(isReapplyRecord).length,
+      value: records.filter((record) => isReapplyRecord(record) && !isLongAppliedRecord(record)).length,
       status: "all",
       metric: "reapply",
     },
@@ -1689,6 +1714,7 @@ function boardColumnSummaryHTML(statusId, columnRecords) {
   const dueCount = columnRecords.filter(isDue).length;
   const reminderCount = columnRecords.filter((record) => isReminderActive(record)).length;
   const overdueCount = columnRecords.filter(isUpdateOverdue).length;
+  const longAppliedCount = columnRecords.filter(isLongAppliedRecord).length;
   const highCount = columnRecords.filter((record) => importanceValue(record) >= 4).length;
   const staleCount = columnRecords.filter(isStale).length;
   const topRecord = columnRecords[0];
@@ -1730,6 +1756,11 @@ function boardColumnSummaryHTML(statusId, columnRecords) {
       ["上次拒绝", total],
       ["4-5 星", highCount],
       ["已置顶", columnRecords.filter((record) => record.pinnedAt).length],
+    ],
+    [LONG_APPLIED_STATUS.id]: [
+      [`投递超 ${LONG_APPLIED_MONTHS} 个月`, longAppliedCount],
+      ["4-5 星", highCount],
+      ["已拒绝", columnRecords.filter((record) => record.status === "已拒绝").length],
     ],
   };
   const hints = statusHints[statusId] || [
@@ -1783,7 +1814,10 @@ function boardColumnHTML({ statusId, label, records: columnRecords, bodyHTML, dr
 function renderBoard(list) {
   const statusColumns = BOARD_STATUSES.map((status) => {
     const columnRecords = list.filter(
-      (record) => record.status === status.id && !(status.id === "已拒绝" && isReapplyRecord(record)),
+      (record) =>
+        record.status === status.id &&
+        !isLongAppliedRecord(record) &&
+        !(status.id === "已拒绝" && isReapplyRecord(record)),
     );
     return boardColumnHTML({
       statusId: status.id,
@@ -1793,7 +1827,8 @@ function renderBoard(list) {
       droppable: true,
     });
   }).join("");
-  const reapplyRecords = list.filter(isReapplyRecord);
+  const reapplyRecords = list.filter((record) => isReapplyRecord(record) && !isLongAppliedRecord(record));
+  const longAppliedRecords = list.filter(isLongAppliedRecord);
   els.boardView.innerHTML = `
     ${statusColumns}
     ${boardColumnHTML({
@@ -1801,6 +1836,12 @@ function renderBoard(list) {
       label: REAPPLY_STATUS.label,
       records: reapplyRecords,
       bodyHTML: reapplyRecords.map(reapplyCardHTML).join("") || emptyStateHTML(),
+    })}
+    ${boardColumnHTML({
+      statusId: LONG_APPLIED_STATUS.id,
+      label: LONG_APPLIED_STATUS.label,
+      records: longAppliedRecords,
+      bodyHTML: longAppliedRecords.map(recordCardHTML).join("") || emptyStateHTML(),
     })}
   `;
 }
@@ -1864,12 +1905,14 @@ function recordCardHTML(record, variant = "") {
   const stale = isStale(record);
   const due = isDue(record);
   const updateOverdue = isUpdateOverdue(record);
+  const longApplied = isLongAppliedRecord(record);
   const importance = normalizeImportance(record);
   const pinned = Boolean(record.pinnedAt);
   const activeReminder = isReminderActive(record);
   const tags = [
     pinned ? `<span class="tag pin-tag">已置顶</span>` : "",
     `<span class="tag status-badge">${escapeHTML(record.status)}</span>`,
+    longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · 投递超 ${LONG_APPLIED_MONTHS} 个月</span>` : "",
     `<span class="tag city-tag">${escapeHTML(cityText(record))}</span>`,
     record.importantReminderAt
       ? `<span class="tag ${activeReminder ? "danger" : "reminder-tag"}">重要提醒 · ${formatDateTime(record.importantReminderAt)}</span>`
@@ -1882,7 +1925,7 @@ function recordCardHTML(record, variant = "") {
     .join("");
 
   return `
-    <article class="record-card ${variant} ${due ? "overdue" : ""} ${updateOverdue ? "update-overdue" : ""}" draggable="true" data-card-id="${record.id}" data-status="${record.status}" data-importance="${importance}" data-update-overdue="${updateOverdue ? "true" : "false"}" data-pinned="${pinned ? "true" : "false"}">
+    <article class="record-card ${variant} ${due ? "overdue" : ""} ${updateOverdue ? "update-overdue" : ""}" draggable="true" data-card-id="${record.id}" data-status="${record.status}" data-importance="${importance}" data-update-overdue="${updateOverdue ? "true" : "false"}" data-long-applied="${longApplied ? "true" : "false"}" data-pinned="${pinned ? "true" : "false"}">
       <div class="record-card-actions" aria-label="记录操作">
         <button class="swipe-action pin-action" type="button" data-pin-id="${record.id}">${pinned ? "取消置顶" : "置顶"}</button>
         <button class="swipe-action delete-action" type="button" data-delete-id="${record.id}">删除</button>
@@ -1928,9 +1971,10 @@ function renderOverviewList(list) {
 
 function renderInsights() {
   const total = records.length;
-  const activeRecords = records.filter((record) => record.status !== "已拒绝");
+  const longAppliedCount = records.filter(isLongAppliedRecord).length;
+  const activeRecords = records.filter((record) => record.status !== "已拒绝" && !isLongAppliedRecord(record));
   const highPriority = records
-    .filter((record) => importanceValue(record) >= 4 && record.status !== "已拒绝")
+    .filter((record) => importanceValue(record) >= 4 && record.status !== "已拒绝" && !isLongAppliedRecord(record))
     .sort((a, b) => {
       const importanceDiff = importanceValue(b) - importanceValue(a);
       if (importanceDiff !== 0) return importanceDiff;
@@ -1941,9 +1985,13 @@ function renderInsights() {
     .slice(0, 6);
   const statusRows = STATUSES.map((status) => ({
     label: status.label,
-    count: records.filter((record) => record.status === status.id).length,
+    count: records.filter((record) => record.status === status.id && !isLongAppliedRecord(record)).length,
     status: status.id,
-  }));
+  })).concat({
+    label: LONG_APPLIED_STATUS.label,
+    count: longAppliedCount,
+    status: LONG_APPLIED_STATUS.id,
+  });
   const cityRows = CITY_OPTIONS.map((city) => ({
     label: city,
     count: records.filter((record) => recordCities(record).includes(city)).length,
@@ -1994,6 +2042,12 @@ function renderInsights() {
       label: "逾期预警",
       value: String(records.filter(isUpdateOverdue).length),
       detail: `超过 ${overdueMonthsThreshold()} 个月未更新`,
+      tone: "alert",
+    },
+    {
+      label: LONG_APPLIED_STATUS.label,
+      value: String(longAppliedCount),
+      detail: `投递日期超过 ${LONG_APPLIED_MONTHS} 个月`,
       tone: "alert",
     },
     {
@@ -2602,6 +2656,7 @@ function closeDrawer() {
 function drawerHTML(record) {
   const importance = normalizeImportance(record);
   const updateOverdue = isUpdateOverdue(record);
+  const longApplied = isLongAppliedRecord(record);
   const assessmentInfo = record.assessmentAt
     ? `${formatDuration(record.assessmentDurationMs)} · ${formatDateTime(record.assessmentAt)}`
     : "未记录";
@@ -2609,7 +2664,7 @@ function drawerHTML(record) {
     ? `${formatDuration(record.rejectedDurationMs)} · ${formatDateTime(record.rejectedAt)}`
     : "未记录";
   return `
-    <div class="drawer-head" data-status="${record.status}" data-importance="${importance}" data-update-overdue="${updateOverdue ? "true" : "false"}">
+    <div class="drawer-head" data-status="${record.status}" data-importance="${importance}" data-update-overdue="${updateOverdue ? "true" : "false"}" data-long-applied="${longApplied ? "true" : "false"}">
       <div class="drawer-title-row">
         <div>
           <p class="eyebrow">Record Detail</p>
@@ -2617,6 +2672,7 @@ function drawerHTML(record) {
           <div class="detail-meta">
             <span class="tag status-badge">${escapeHTML(record.status)}</span>
             <span class="importance-badge">${stars(importance)}</span>
+            ${longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · 投递超 ${LONG_APPLIED_MONTHS} 个月</span>` : ""}
             ${updateOverdue ? `<span class="tag danger">逾期预警 · ${monthsBetween(record.updatedAt)} 个月未更新</span>` : ""}
             ${record.importantReminderAt ? `<span class="tag ${isReminderActive(record) ? "danger" : "reminder-tag"}">重要提醒 · ${formatDateTime(record.importantReminderAt)}</span>` : ""}
             ${isDue(record) ? '<span class="tag warn">今日待检查</span>' : ""}
