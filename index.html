@@ -45,94 +45,17 @@
           </div>
         </div>
 
-        <section id="overviewPage" class="app-module is-active" data-module="overview" aria-label="状态筛选">
-          <section class="module-hero">
+        <section id="overviewPage" class="app-module is-active" data-module="overview" aria-label="今日">
+          <section class="module-hero today-hero">
             <div>
-              <p class="eyebrow">Overview</p>
-              <h3>从状态入口进入，不在首页堆列表</h3>
-              <p>先看每个阶段的数量、城市和逾期条件；筛选或排序后，结果会直接在总览下方展开。</p>
+              <p class="eyebrow">Today</p>
+              <h3>今天先处理这些事</h3>
+              <p>首页只保留需要马上行动的投递：待检查、临近截止、时间过长和高重要推进。</p>
             </div>
           </section>
 
-          <section class="module-card">
-            <div class="module-card-head">
-              <div>
-                <p class="section-label">状态筛选</p>
-                <h3>选择一个阶段</h3>
-              </div>
-              <span class="card-hint">点击后在下方展示记录</span>
-            </div>
-            <div id="statusFilters" class="filter-stack status-grid"></div>
-          </section>
+          <section id="todayFocusGrid" class="today-focus-grid" aria-label="今日重点"></section>
 
-          <section class="module-card">
-            <div class="module-card-head">
-              <div>
-                <p class="section-label">筛选条件</p>
-                <h3>缩小结果范围</h3>
-              </div>
-            </div>
-            <div class="filter-panel-grid">
-              <label>
-                <span>城市筛选</span>
-                <select id="cityFilter" class="select-input">
-                  <option value="all">全部城市</option>
-                </select>
-              </label>
-              <label>
-                <span>排序</span>
-                <select id="sortSelect" class="select-input">
-                  <option value="updatedDesc">星级优先 · 最近更新</option>
-                  <option value="staleDesc">星级优先 · 最久未更新</option>
-                  <option value="appliedDesc">星级优先 · 最近投递</option>
-                  <option value="companyAsc">星级优先 · 公司名称</option>
-                </select>
-              </label>
-              <label class="number-field" for="overdueMonthsInput">
-                <span>超过</span>
-                <input id="overdueMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
-                <span>个月未更新</span>
-              </label>
-              <label class="number-field" for="longAppliedMonthsInput">
-                <span>投递超</span>
-                <input id="longAppliedMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
-                <span>个月归类</span>
-              </label>
-            </div>
-          </section>
-
-          <section id="overviewResultsPanel" class="module-card overview-results hidden">
-            <div class="module-card-head">
-              <div>
-                <p class="section-label">筛选结果</p>
-                <h3>投递列表</h3>
-              </div>
-              <div id="resultMeta" class="result-meta"></div>
-            </div>
-            <section id="overviewListView" class="table-view overview-list-view" aria-label="总览投递列表"></section>
-          </section>
-        </section>
-
-        <section id="recordsPage" class="app-module hidden" data-module="records" aria-label="投递记录">
-          <section class="toolbar">
-            <div>
-              <p class="eyebrow">Applications</p>
-              <h3>投递工作区</h3>
-            </div>
-            <p class="toolbar-hint">按状态分组处理投递记录</p>
-          </section>
-
-          <section id="boardView" class="board-view" aria-label="状态看板"></section>
-        </section>
-
-        <section id="remindersPage" class="app-module hidden" data-module="reminders" aria-label="提醒">
-          <section class="module-hero reminder-module-hero">
-            <div>
-              <p class="eyebrow">Reminders</p>
-              <h3>今天该检查什么，马上要截止什么</h3>
-              <p>把下次检查、12 小时内强提醒和逾期风险集中到一个模块里。</p>
-            </div>
-          </section>
           <div class="reminder-module-grid">
             <section class="module-card check-panel">
               <div class="module-card-head">
@@ -153,6 +76,68 @@
               <div id="reminderHubList" class="reminder-list compact-reminder-list"></div>
             </section>
           </div>
+        </section>
+
+        <section id="recordsPage" class="app-module hidden" data-module="records" aria-label="投递记录">
+          <section class="toolbar">
+            <div>
+              <p class="eyebrow">Applications</p>
+              <h3>投递工作区</h3>
+            </div>
+            <p class="toolbar-hint">搜索、筛选和看板都在这里处理</p>
+          </section>
+
+          <section class="module-card compact-filter-card">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">状态筛选</p>
+                <h3>快速定位记录</h3>
+              </div>
+              <span class="card-hint">筛选后在下方展示列表</span>
+            </div>
+            <div id="statusFilters" class="filter-stack status-grid"></div>
+            <div class="filter-panel-grid records-filter-grid">
+              <label>
+                <span>城市筛选</span>
+                <select id="cityFilter" class="select-input">
+                  <option value="all">全部城市</option>
+                </select>
+              </label>
+              <label>
+                <span>排序</span>
+                <select id="sortSelect" class="select-input">
+                  <option value="updatedDesc">星级优先 · 最近更新</option>
+                  <option value="staleDesc">星级优先 · 最久未更新</option>
+                  <option value="appliedDesc">星级优先 · 最近投递</option>
+                  <option value="companyAsc">星级优先 · 公司名称</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section id="overviewResultsPanel" class="module-card overview-results hidden">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">筛选结果</p>
+                <h3>投递列表</h3>
+              </div>
+              <div id="resultMeta" class="result-meta"></div>
+            </div>
+            <section id="overviewListView" class="table-view overview-list-view" aria-label="投递筛选列表"></section>
+          </section>
+
+          <section id="boardView" class="board-view" aria-label="状态看板"></section>
+        </section>
+
+        <section id="remindersPage" class="app-module hidden" data-module="reminders" aria-label="分析">
+          <section class="module-hero analysis-hero">
+            <div>
+              <p class="eyebrow">Analysis</p>
+              <h3>看趋势，不在这里处理记录</h3>
+              <p>统计页只保留状态漏斗、城市分布、星级分布和关键指标，用来判断投递节奏。</p>
+            </div>
+          </section>
+          <section id="insightsView" class="insights-view" aria-label="投递统计分析"></section>
         </section>
 
         <section id="profilePage" class="app-module hidden" data-module="profile" aria-label="我的">
@@ -243,8 +228,6 @@
             <p id="accountFeedback" class="account-feedback" aria-live="polite">每个账号的数据本地隔离保存。</p>
           </section>
 
-          <section id="insightsView" class="insights-view" aria-label="投递统计分析"></section>
-
           <section id="cloudBackupPanel" class="module-card cloud-backup-panel">
             <div class="module-card-head">
               <div>
@@ -270,6 +253,27 @@
               </button>
             </div>
             <div id="cloudBackupList" class="cloud-backup-list" aria-label="云备份历史"></div>
+          </section>
+
+          <section class="module-card settings-card">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">系统设置</p>
+                <h3>提醒阈值</h3>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label class="number-field" for="overdueMonthsInput">
+                <span>超过</span>
+                <input id="overdueMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
+                <span>个月未更新</span>
+              </label>
+              <label class="number-field" for="longAppliedMonthsInput">
+                <span>投递超</span>
+                <input id="longAppliedMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
+                <span>个月归类</span>
+              </label>
+            </div>
           </section>
 
           <section class="module-card">
@@ -303,13 +307,13 @@
 
         <footer class="app-footer" aria-label="版权与作者信息">
           <span>bai@copyright</span>
-          <span id="appVersionInfo" class="version-info">v3.0.7 · 更新于 2026.08.07</span>
+          <span id="appVersionInfo" class="version-info">v3.1.0 · 更新于 2026.08.08</span>
         </footer>
 
         <nav class="bottom-nav" aria-label="底部模块导航">
           <button class="bottom-nav-item active" type="button" data-module-nav="overview">
             <span data-icon="home"></span>
-            <strong>总览</strong>
+            <strong>今日</strong>
           </button>
           <button class="bottom-nav-item" type="button" data-module-nav="records">
             <span data-icon="briefcase"></span>
@@ -319,8 +323,8 @@
             <span data-icon="plus"></span>
           </button>
           <button class="bottom-nav-item" type="button" data-module-nav="reminders">
-            <span data-icon="bell"></span>
-            <strong>提醒</strong>
+            <span data-icon="chart"></span>
+            <strong>分析</strong>
           </button>
           <button class="bottom-nav-item" type="button" data-module-nav="profile">
             <span data-icon="user"></span>

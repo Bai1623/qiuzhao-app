@@ -7,8 +7,8 @@ const LONG_APPLIED_MONTHS_KEY = "campus-application-tracker:long-applied-months:
 const MASTER_PASSWORD_KEY = "campus-application-tracker:master-password:v1";
 const CLOUD_BACKUP_PREFIX = "campus-application-tracker:cloud-backups:v1:";
 const CLOUD_SYNC_SETTINGS_PREFIX = "campus-application-tracker:cloud-sync:v1:";
-const APP_VERSION = "3.0.7";
-const APP_UPDATED_AT = "2026.08.07";
+const APP_VERSION = "3.1.0";
+const APP_UPDATED_AT = "2026.08.08";
 
 const STATUSES = [
   { id: "待初筛", label: "待初筛" },
@@ -100,6 +100,8 @@ const icons = {
     '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 12h18"></path></svg>',
   bell:
     '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>',
+  chart:
+    '<svg viewBox="0 0 24 24"><path d="M4 19V5"></path><path d="M4 19h16"></path><rect x="7" y="11" width="3" height="5" rx="1"></rect><rect x="12" y="7" width="3" height="9" rx="1"></rect><rect x="17" y="3" width="3" height="13" rx="1"></rect></svg>',
   user:
     '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>',
   search:
@@ -191,6 +193,7 @@ const els = {
   profilePage: document.querySelector("#profilePage"),
   overviewResultsPanel: document.querySelector("#overviewResultsPanel"),
   overviewListView: document.querySelector("#overviewListView"),
+  todayFocusGrid: document.querySelector("#todayFocusGrid"),
   statusFilters: document.querySelector("#statusFilters"),
   sourceFilter: document.querySelector("#sourceFilter"),
   cityFilter: document.querySelector("#cityFilter"),
@@ -1093,7 +1096,10 @@ function getFilteredRecords() {
     const metricMatch =
       activeMetric === "all" ||
       (activeMetric === "overdue" && isUpdateOverdue(record)) ||
-      (activeMetric === "reapply" && isReapplyRecord(record) && !longApplied);
+      (activeMetric === "reapply" && isReapplyRecord(record) && !longApplied) ||
+      (activeMetric === "due" && isDue(record)) ||
+      (activeMetric === "reminder" && isReminderActive(record)) ||
+      (activeMetric === "high" && importanceValue(record) >= 4 && record.status !== "已拒绝" && !longApplied);
     return statusMatch && cityMatch && queryMatch && metricMatch;
   });
 
@@ -1746,6 +1752,58 @@ function renderReminderHub() {
     .join("");
 }
 
+function renderTodayFocus() {
+  if (!els.todayFocusGrid) return;
+  const dueCount = records.filter(isDue).length;
+  const reminderCount = records.filter((record) => isReminderActive(record)).length;
+  const longAppliedCount = records.filter(isLongAppliedRecord).length;
+  const highCount = records.filter(
+    (record) => importanceValue(record) >= 4 && record.status !== "已拒绝" && !isLongAppliedRecord(record),
+  ).length;
+  const items = [
+    {
+      id: "due",
+      label: "今日待检查",
+      value: dueCount,
+      detail: "需要回看状态",
+      metric: "due",
+    },
+    {
+      id: "reminder",
+      label: "12小时内提醒",
+      value: reminderCount,
+      detail: "测评/笔试/面试",
+      metric: "reminder",
+    },
+    {
+      id: "long",
+      label: LONG_APPLIED_STATUS.label,
+      value: longAppliedCount,
+      detail: `投递超 ${longAppliedMonthsThreshold()} 个月`,
+      status: LONG_APPLIED_STATUS.id,
+      metric: "all",
+    },
+    {
+      id: "high",
+      label: "高重要待推进",
+      value: highCount,
+      detail: "4-5 星活跃投递",
+      metric: "high",
+    },
+  ];
+  els.todayFocusGrid.innerHTML = items
+    .map(
+      (item) => `
+        <button class="today-focus-card" type="button" data-today-focus="${item.id}" data-today-status="${item.status || "all"}" data-today-metric="${item.metric}">
+          <span>${escapeHTML(item.label)}</span>
+          <strong>${item.value}</strong>
+          <em>${escapeHTML(item.detail)}</em>
+        </button>
+      `,
+    )
+    .join("");
+}
+
 function boardColumnSummaryHTML(statusId, columnRecords) {
   const total = columnRecords.length;
   const dueCount = columnRecords.filter(isDue).length;
@@ -1939,7 +1997,6 @@ function quickStatusButtonsHTML(record, buttonClass = "") {
 }
 
 function recordCardHTML(record, variant = "") {
-  const stale = isStale(record);
   const due = isDue(record);
   const updateOverdue = isUpdateOverdue(record);
   const longApplied = isLongAppliedRecord(record);
@@ -1949,13 +2006,9 @@ function recordCardHTML(record, variant = "") {
   const tags = [
     pinned ? `<span class="tag pin-tag">已置顶</span>` : "",
     `<span class="tag status-badge">${escapeHTML(record.status)}</span>`,
-    longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label} · ${record.longAppliedManual ? "手动加入" : `投递超 ${longAppliedMonthsThreshold()} 个月`}</span>` : "",
     `<span class="tag city-tag">${escapeHTML(cityText(record))}</span>`,
-    record.importantReminderAt
-      ? `<span class="tag ${activeReminder ? "danger" : "reminder-tag"}">重要提醒 · ${formatDateTime(record.importantReminderAt)}</span>`
-      : "",
-    updateOverdue ? `<span class="tag danger">逾期预警 · ${monthsBetween(record.updatedAt)} 个月未更新</span>` : "",
-    stale ? `<span class="tag warn">${daysBetween(record.updatedAt)} 天未更新</span>` : "",
+    longApplied ? `<span class="tag long-applied-tag">${LONG_APPLIED_STATUS.label}</span>` : "",
+    activeReminder ? `<span class="tag danger">临近截止</span>` : "",
     due ? `<span class="tag warn">今日检查</span>` : "",
   ]
     .filter(Boolean)
@@ -1976,8 +2029,7 @@ function recordCardHTML(record, variant = "") {
           <span class="importance-badge">${stars(importance)}</span>
         </div>
         <div class="tag-row">${tags}</div>
-        <div class="meta-line">更新于 ${formatDate(record.updatedAt)} · 投递于 ${formatDate(record.appliedAt)}</div>
-        ${record.note ? `<div class="meta-line">${escapeHTML(record.note)}</div>` : ""}
+        <div class="meta-line">更新于 ${formatDate(record.updatedAt)}</div>
         <div class="quick-status" aria-label="快速切换状态">
           ${record.status === "待初筛" ? `<button class="active-check-action" type="button" data-active-check-id="${record.id}">今日已检查</button>` : ""}
           ${quickStatusButtonsHTML(record)}
@@ -2206,6 +2258,7 @@ function render() {
   renderStatusFilters();
   renderCityFilter();
   renderStats();
+  renderTodayFocus();
   renderDueList();
   renderReminderHub();
   renderBoard(getBoardRecords());
@@ -2230,7 +2283,7 @@ function submitSearch() {
   const list = getFilteredRecords();
   if (!query) return;
   overviewListVisible = true;
-  setModule("overview");
+  setModule("records");
   render();
   els.resultMeta.classList.remove("is-warning");
   if (!list.length) {
@@ -2267,7 +2320,7 @@ function setModule(module) {
 
 function revealOverviewList(scroll = false) {
   overviewListVisible = true;
-  setModule("overview");
+  setModule("records");
   render();
   if (scroll) {
     els.overviewResultsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3708,21 +3761,37 @@ function bindEvents() {
   els.sortSelect.addEventListener("change", () => revealOverviewList(true));
   els.overdueMonthsInput.addEventListener("change", () => {
     saveOverdueMonthsSetting();
-    revealOverviewList(true);
+    if (activeModule === "records") {
+      revealOverviewList(true);
+    } else {
+      render();
+    }
   });
   els.overdueMonthsInput.addEventListener("input", () => {
     if (!els.overdueMonthsInput.value) return;
     saveOverdueMonthsSetting();
-    revealOverviewList(false);
+    if (activeModule === "records") {
+      revealOverviewList(false);
+    } else {
+      render();
+    }
   });
   els.longAppliedMonthsInput?.addEventListener("change", () => {
     saveLongAppliedMonthsSetting();
-    revealOverviewList(true);
+    if (activeModule === "records") {
+      revealOverviewList(true);
+    } else {
+      render();
+    }
   });
   els.longAppliedMonthsInput?.addEventListener("input", () => {
     if (!els.longAppliedMonthsInput.value) return;
     saveLongAppliedMonthsSetting();
-    revealOverviewList(false);
+    if (activeModule === "records") {
+      revealOverviewList(false);
+    } else {
+      render();
+    }
   });
   els.recordForm.addEventListener("submit", saveFromForm);
   els.recordForm.elements.importantReminderType.addEventListener("change", updateImportantReminderFields);
@@ -3755,6 +3824,7 @@ function bindEvents() {
     const markReapplyTarget = event.target.closest("[data-mark-reapply-id]");
     const filterTarget = event.target.closest("[data-filter-status]");
     const statTarget = event.target.closest("[data-stat-status]");
+    const todayFocusTarget = event.target.closest("[data-today-focus]");
     const cityStatTarget = event.target.closest("[data-city-stat]");
     const dueStatusTarget = event.target.closest("[data-due-status]");
     const closeTarget = event.target.closest("[data-close-drawer]");
@@ -3873,6 +3943,11 @@ function bindEvents() {
 
     if (statTarget) {
       selectOverviewFilter(statTarget.dataset.statStatus, statTarget.dataset.statMetric || "all");
+      return;
+    }
+
+    if (todayFocusTarget) {
+      selectOverviewFilter(todayFocusTarget.dataset.todayStatus || "all", todayFocusTarget.dataset.todayMetric || "all");
       return;
     }
 
