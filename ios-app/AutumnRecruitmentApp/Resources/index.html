@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d9488" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="秋招投递" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="description" content="本地保存的秋招投递状态管理工具，支持手机浏览器和主屏幕安装。" />
+    <title>秋招投递管理</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./app-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <main class="main-shell">
+        <header class="topbar app-header">
+          <div>
+            <p class="eyebrow">本地保存 · 快速更新 · 面试节奏</p>
+            <h2>秋招投递管理</h2>
+          </div>
+          <div class="top-actions">
+            <button
+              id="accountMenuBtn"
+              class="brand-mark"
+              type="button"
+              aria-label="进入我的账号"
+              aria-expanded="false"
+              aria-controls="accountMenu"
+              title="我的"
+            >
+              秋
+            </button>
+          </div>
+        </header>
+
+        <div class="global-search">
+          <div class="search-box">
+            <button id="searchButton" class="search-button" type="button" aria-label="搜索并跳转到列表">
+              <span data-icon="search"></span>
+            </button>
+            <input id="searchInput" type="search" placeholder="搜索公司、岗位、城市" autocomplete="off" />
+          </div>
+        </div>
+
+        <section id="overviewPage" class="app-module is-active" data-module="overview" aria-label="今日">
+          <section class="module-hero today-hero">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h3>今天先处理这些事</h3>
+              <p>首页只保留需要马上行动的投递：待检查、临近截止、时间过长和高重要推进。</p>
+            </div>
+          </section>
+
+          <section id="todayFocusGrid" class="today-focus-grid" aria-label="今日重点"></section>
+
+          <div class="reminder-module-grid">
+            <section class="module-card check-panel">
+              <div class="module-card-head">
+                <div>
+                  <p class="section-label">今日待检查</p>
+                  <h3>回看投递状态</h3>
+                </div>
+              </div>
+              <div id="dueList" class="due-list"></div>
+            </section>
+            <section class="module-card">
+              <div class="module-card-head">
+                <div>
+                  <p class="section-label">重要提醒</p>
+                  <h3>截止前 12 小时</h3>
+                </div>
+              </div>
+              <div id="reminderHubList" class="reminder-list compact-reminder-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="recordsPage" class="app-module hidden" data-module="records" aria-label="投递记录">
+          <section class="toolbar">
+            <div>
+              <p class="eyebrow">Applications</p>
+              <h3>投递工作区</h3>
+            </div>
+            <p class="toolbar-hint">搜索、筛选和看板都在这里处理</p>
+          </section>
+
+          <section class="module-card compact-filter-card">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">状态筛选</p>
+                <h3>快速定位记录</h3>
+              </div>
+              <span class="card-hint">筛选后在下方展示列表</span>
+            </div>
+            <div id="statusFilters" class="filter-stack status-grid"></div>
+            <div class="filter-panel-grid records-filter-grid">
+              <label>
+                <span>城市筛选</span>
+                <select id="cityFilter" class="select-input">
+                  <option value="all">全部城市</option>
+                </select>
+              </label>
+              <label>
+                <span>排序</span>
+                <select id="sortSelect" class="select-input">
+                  <option value="updatedDesc">星级优先 · 最近更新</option>
+                  <option value="staleDesc">星级优先 · 最久未更新</option>
+                  <option value="appliedDesc">星级优先 · 最近投递</option>
+                  <option value="companyAsc">星级优先 · 公司名称</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section id="overviewResultsPanel" class="module-card overview-results hidden">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">筛选结果</p>
+                <h3>投递列表</h3>
+              </div>
+              <div id="resultMeta" class="result-meta"></div>
+            </div>
+            <section id="overviewListView" class="table-view overview-list-view" aria-label="投递筛选列表"></section>
+          </section>
+
+          <section id="boardView" class="board-view" aria-label="状态看板"></section>
+        </section>
+
+        <section id="remindersPage" class="app-module hidden" data-module="reminders" aria-label="分析">
+          <section class="module-hero analysis-hero">
+            <div>
+              <p class="eyebrow">Analysis</p>
+              <h3>看趋势，不在这里处理记录</h3>
+              <p>统计页只保留状态漏斗、城市分布、星级分布和关键指标，用来判断投递节奏。</p>
+            </div>
+          </section>
+          <section id="insightsView" class="insights-view" aria-label="投递统计分析"></section>
+        </section>
+
+        <section id="profilePage" class="app-module hidden" data-module="profile" aria-label="我的">
+          <section id="accountMenu" class="account-menu profile-account" aria-label="账号空间">
+            <div class="account-menu-head">
+              <div>
+                <p class="section-label">当前账号</p>
+                <strong id="activeAccountName">本地游客</strong>
+              </div>
+              <button id="closeAccountMenuBtn" class="icon-button secondary compact" type="button" aria-label="收起账号空间" title="收起">
+                <span data-icon="x"></span>
+              </button>
+            </div>
+
+            <div class="account-panel-stack">
+              <div id="accountHomePanel" class="account-home-panel account-subpanel is-panel-visible">
+                <div class="account-home-card">
+                  <div class="account-avatar" aria-hidden="true">秋</div>
+                  <div>
+                    <p class="section-label">当前身份</p>
+                    <strong id="accountHomeName">本地游客</strong>
+                    <span id="accountHomeMeta">游客数据只保存在本机</span>
+                  </div>
+                </div>
+                <div class="account-entry-actions" aria-label="账号入口">
+                  <button id="openLoginPanelBtn" class="text-entry-button" type="button">
+                    <span data-icon="user"></span>
+                    <span>去登录</span>
+                  </button>
+                  <button id="openAccountAdminBtn" class="text-entry-button" type="button">
+                    <span data-icon="user"></span>
+                    <span>账号管理</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="accountLoginPanel" class="account-editor account-subpanel hidden">
+                <div class="account-subpanel-head">
+                  <div>
+                    <p class="section-label">云端同步</p>
+                    <label for="newAccountNameInput">账号登录</label>
+                  </div>
+                  <button id="backAccountHomeFromLoginBtn" class="mini-button" type="button">
+                    <span data-icon="x"></span>
+                    <span>返回</span>
+                  </button>
+                </div>
+                <div class="account-auth-copy">
+                  <p>使用“账号名+密码”登录后，会自动尝试从云端恢复并同步该账号的最新备份。</p>
+                </div>
+                <div class="account-field-group">
+                  <label for="newAccountNameInput">登录账号</label>
+                  <input id="newAccountNameInput" type="text" maxlength="24" placeholder="例如：我的秋招" autocomplete="off" />
+                </div>
+                <div class="account-field-group">
+                  <label for="newAccountPasswordInput">账号密码</label>
+                  <input id="newAccountPasswordInput" type="password" placeholder="设置或输入账号密码" autocomplete="current-password" />
+                </div>
+                <button id="createAccountBtn" class="mini-button strong-mini" type="button">
+                  <span data-icon="check"></span>
+                  <strong>立即登录</strong>
+                </button>
+              </div>
+
+              <div id="accountAdminPanel" class="account-editor account-subpanel hidden">
+                <div class="account-subpanel-head">
+                  <div>
+                    <p class="section-label">本机管理</p>
+                    <label>管理员账户</label>
+                  </div>
+                  <button id="backAccountHomeFromAdminBtn" class="mini-button" type="button">
+                    <span data-icon="x"></span>
+                    <span>返回</span>
+                  </button>
+                </div>
+                <div id="accountList" class="account-list" aria-label="账号列表"></div>
+                <div id="accountPasswordGate" class="account-security-gate"></div>
+                <div id="accountRecoveryList" class="account-security-list"></div>
+                <div id="deleteAccountConfirm" class="delete-confirm hidden">
+                  <span id="deleteAccountConfirmText">确认删除这个账号和它的记录？</span>
+                  <button id="confirmDeleteAccountBtn" class="mini-button danger-mini" type="button">确认</button>
+                  <button id="cancelDeleteAccountBtn" class="mini-button" type="button">取消</button>
+                </div>
+                <p id="accountSecurityHint" class="account-help">旧密码无法查看；通过管理员账户后才能重置。</p>
+              </div>
+            </div>
+
+            <p id="accountFeedback" class="account-feedback" aria-live="polite">每个账号的数据本地隔离保存。</p>
+          </section>
+
+          <section id="cloudBackupPanel" class="module-card cloud-backup-panel">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">云备份中心</p>
+                <h3>自动备份与恢复</h3>
+              </div>
+              <span id="cloudBackupStatus" class="card-hint">每 12 小时自动检查</span>
+            </div>
+            <div class="cloud-sync-panel">
+              <div class="cloud-sync-title">
+                <strong>账号云同步</strong>
+                <span id="cloudSyncStatus">未开启</span>
+              </div>
+              <div class="cloud-sync-controls">
+                <button id="checkCloudSyncBtn" class="mini-button" type="button">检查云端</button>
+              </div>
+              <p id="cloudSyncFeedback" class="cloud-sync-feedback">登录账号后，会用账号名和账号密码检查云端最新备份。</p>
+            </div>
+            <div class="cloud-backup-actions">
+              <button id="backupNowBtn" class="profile-action" type="button">
+                <span data-icon="share"></span>
+                <strong>立即备份</strong>
+              </button>
+            </div>
+            <div id="cloudBackupList" class="cloud-backup-list" aria-label="云备份历史"></div>
+          </section>
+
+          <section class="module-card settings-card">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">系统设置</p>
+                <h3>提醒阈值</h3>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <label class="number-field" for="overdueMonthsInput">
+                <span>超过</span>
+                <input id="overdueMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
+                <span>个月未更新</span>
+              </label>
+              <label class="number-field" for="longAppliedMonthsInput">
+                <span>投递超</span>
+                <input id="longAppliedMonthsInput" type="number" min="1" max="36" step="1" inputmode="numeric" />
+                <span>个月归类</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="module-card">
+            <div class="module-card-head">
+              <div>
+                <p class="section-label">数据与信息</p>
+                <h3>导入导出</h3>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <button id="exportBtn" class="profile-action" type="button">
+                <span data-icon="download"></span>
+                <strong>导出</strong>
+              </button>
+              <button id="importBtn" class="profile-action" type="button">
+                <span data-icon="upload"></span>
+                <strong>导入</strong>
+              </button>
+              <input id="importInput" type="file" accept="application/json" hidden />
+              <button id="mobileBtn" class="profile-action" type="button">
+                <span data-icon="phone"></span>
+                <strong>手机打开</strong>
+              </button>
+              <button id="authorContactBtn" class="profile-action" type="button">
+                <span data-icon="external"></span>
+                <strong>联系作者</strong>
+              </button>
+            </div>
+          </section>
+        </section>
+
+        <footer class="app-footer" aria-label="版权与作者信息">
+          <span>bai@copyright</span>
+          <span id="appVersionInfo" class="version-info">v3.1.0 · 更新于 2026.08.08</span>
+        </footer>
+
+        <nav class="bottom-nav" aria-label="底部模块导航">
+          <button class="bottom-nav-item active" type="button" data-module-nav="overview">
+            <span data-icon="home"></span>
+            <strong>今日</strong>
+          </button>
+          <button class="bottom-nav-item" type="button" data-module-nav="records">
+            <span data-icon="briefcase"></span>
+            <strong>投递</strong>
+          </button>
+          <button id="addBtn" class="bottom-add" type="button" aria-label="添加记录" title="添加记录" onclick="try{window.__trackerOpenAdd&amp;&amp;window.__trackerOpenAdd()}catch(e){};if(!document.getElementById('recordDialog').classList.contains('is-open')){window.__trackerOpenRecordFallback&amp;&amp;window.__trackerOpenRecordFallback()}">
+            <span data-icon="plus"></span>
+          </button>
+          <button class="bottom-nav-item" type="button" data-module-nav="reminders">
+            <span data-icon="chart"></span>
+            <strong>分析</strong>
+          </button>
+          <button class="bottom-nav-item" type="button" data-module-nav="profile">
+            <span data-icon="user"></span>
+            <strong>我的</strong>
+          </button>
+        </nav>
+      </main>
+    </div>
+
+    <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+    <aside id="detailDrawer" class="detail-drawer hidden" aria-label="记录详情" aria-hidden="true"></aside>
+    <div id="modalBackdrop" class="modal-backdrop hidden"></div>
+    <div id="toast" class="app-toast hidden" role="status" aria-live="polite"></div>
+
+    <section id="recordDialog" class="record-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <form id="recordForm" novalidate>
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Application Record</p>
+            <h3 id="dialogTitle">添加投递记录</h3>
+          </div>
+          <button class="icon-button ghost" value="cancel" type="button" id="closeDialogBtn" aria-label="关闭" title="关闭" onclick="window.__trackerCloseRecordFallback&amp;&amp;window.__trackerCloseRecordFallback()">
+            <span data-icon="x"></span>
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>公司名称</span>
+            <input name="company" required maxlength="60" placeholder="例如：腾讯" />
+          </label>
+          <label>
+            <span>岗位名称</span>
+            <input name="position" maxlength="80" placeholder="例如：后端开发工程师" />
+          </label>
+          <label>
+            <span>城市（最多 3 个）</span>
+            <select name="cities" multiple size="6" required></select>
+          </label>
+          <label>
+            <span>当前状态</span>
+            <select name="status" required></select>
+          </label>
+          <label>
+            <span>投递日期</span>
+            <input name="appliedAt" type="date" required />
+          </label>
+          <label>
+            <span>更新时间</span>
+            <input name="updatedAt" type="date" required />
+          </label>
+          <label>
+            <span>下次检查</span>
+            <input name="nextCheckAt" type="date" />
+          </label>
+          <label>
+            <span>重要程度</span>
+            <select name="importance">
+              <option value="1">★ 1 星</option>
+              <option value="2">★★ 2 星</option>
+              <option value="3">★★★ 3 星</option>
+              <option value="4">★★★★ 4 星</option>
+              <option value="5">★★★★★ 5 星</option>
+            </select>
+          </label>
+          <label>
+            <span>重要提醒</span>
+            <select name="importantReminderType" required>
+              <option value="none">无</option>
+              <option value="deadline">选择截止日期时间</option>
+              <option value="relative">从现在起 N 小时</option>
+            </select>
+          </label>
+          <label id="importantReminderAtField" class="hidden">
+            <span>提醒时间</span>
+            <input name="importantReminderAt" type="datetime-local" />
+          </label>
+          <label id="importantReminderHoursField" class="hidden">
+            <span>未来多少小时</span>
+            <input name="importantReminderHours" type="number" min="1" max="8760" step="1" inputmode="numeric" placeholder="例如：48" />
+          </label>
+          <label id="importantReminderNoteField" class="wide hidden">
+            <span>提醒备注</span>
+            <input name="importantReminderNote" maxlength="120" placeholder="例如：在线测评、笔试、确认面试时间" />
+          </label>
+          <label class="wide">
+            <span>备注 / 本次更新</span>
+            <textarea name="note" rows="4" maxlength="500" placeholder="记录你这次查询到的状态、面试时间或注意事项"></textarea>
+          </label>
+        </div>
+
+        <p id="formError" class="form-error" role="alert"></p>
+
+        <div class="dialog-actions">
+          <button id="deleteFromFormBtn" class="danger-button hidden" type="button">
+            <span data-icon="trash"></span>
+            删除
+          </button>
+          <span class="dialog-spacer"></span>
+          <button class="text-button" value="cancel" type="button" id="cancelDialogBtn" onclick="window.__trackerCloseRecordFallback&amp;&amp;window.__trackerCloseRecordFallback()">取消</button>
+          <button class="primary-button" id="saveRecordBtn" type="submit">
+            <span data-icon="check"></span>
+            保存
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section id="exportDialog" class="record-dialog export-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Data Backup</p>
+          <h3>导出投递记录</h3>
+        </div>
+        <button class="icon-button ghost" type="button" id="closeExportDialogBtn" aria-label="关闭" title="关闭">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <div class="export-content">
+        <p id="exportFeedback" class="link-import-feedback export-feedback" aria-live="polite"></p>
+        <button id="shareExportBtn" class="export-option" type="button">
+          <span data-icon="share"></span>
+          <strong>系统分享</strong>
+          <small>发到微信、文件、网盘或其他应用</small>
+        </button>
+        <button id="saveExportBtn" class="export-option" type="button">
+          <span data-icon="download"></span>
+          <strong>保存 JSON 文件</strong>
+          <small>选择手机或电脑上的保存位置</small>
+        </button>
+        <button id="copyExportBtn" class="export-option" type="button">
+          <span data-icon="copy"></span>
+          <strong>复制 JSON</strong>
+          <small>复制到剪贴板，适合发消息给电脑</small>
+        </button>
+        <button id="copyImportLinkBtn" class="export-option" type="button">
+          <span data-icon="copy"></span>
+          <strong>生成并复制云端短链接</strong>
+          <small>生成短链接，发到微信、QQ 后粘贴到导入面板</small>
+        </button>
+      </div>
+    </section>
+
+    <section id="linkImportDialog" class="record-dialog link-import-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="linkImportTitle">
+      <div class="dialog-head link-import-head">
+        <div>
+          <p class="eyebrow">Link Import</p>
+          <h3 id="linkImportTitle">导入投递记录</h3>
+        </div>
+        <button class="icon-button ghost" type="button" id="cancelLinkImportBtn" aria-label="关闭" title="关闭">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <div class="link-import-content">
+        <div class="link-import-badge">
+          <span data-icon="upload"></span>
+        </div>
+        <div>
+          <strong>选择导入方式</strong>
+          <p>导入会覆盖当前账号现有记录。你可以选择 JSON 文件，也可以粘贴短链接、原始长链接 / 原始 JSON。</p>
+        </div>
+      </div>
+      <div class="link-import-actions">
+        <button id="chooseJsonImportBtn" class="export-option" type="button">
+          <span data-icon="upload"></span>
+          <strong>选择 JSON 文件</strong>
+          <small>打开文件管理器，选择之前导出的 JSON 文件</small>
+        </button>
+        <label class="link-import-field" for="importLinkInput">
+          <span>通过链接或原始内容导入</span>
+          <textarea id="importLinkInput" rows="6" placeholder="粘贴短链接、旧版原始长链接，或直接粘贴原始 JSON 记录内容"></textarea>
+        </label>
+        <p id="importLinkFeedback" class="link-import-feedback" aria-live="polite"></p>
+      </div>
+      <div class="dialog-actions">
+        <button class="text-button" type="button" id="rejectLinkImportBtn">取消</button>
+        <button class="primary-button" type="button" id="confirmLinkImportBtn">
+          <span data-icon="check"></span>
+          导入
+        </button>
+      </div>
+    </section>
+
+    <section id="mobileDialog" class="record-dialog mobile-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Mobile Access</p>
+          <h3>在手机上打开</h3>
+        </div>
+        <button class="icon-button ghost" type="button" id="closeMobileDialogBtn" aria-label="关闭" title="关闭">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <div class="mobile-content">
+        <section class="mobile-card">
+          <div class="mobile-card-head">
+            <span class="mobile-step">1</span>
+            <strong>让电脑临时提供访问地址</strong>
+          </div>
+          <code class="command-line">python3 -m http.server 5173 --bind 0.0.0.0</code>
+        </section>
+        <section class="mobile-card">
+          <div class="mobile-card-head">
+            <span class="mobile-step">2</span>
+            <strong>手机和电脑连同一个 Wi-Fi</strong>
+          </div>
+          <p>手机浏览器打开电脑局域网地址，例如 <code>http://电脑IP:5173</code>。</p>
+        </section>
+        <section class="mobile-card">
+          <div class="mobile-card-head">
+            <span class="mobile-step">3</span>
+            <strong>添加到手机主屏幕</strong>
+          </div>
+          <p>iPhone 用 Safari 分享按钮里的“添加到主屏幕”；Android 用浏览器菜单里的“安装应用”。</p>
+        </section>
+
+        <div class="share-box">
+          <label for="shareUrl">当前页面地址</label>
+          <div class="share-row">
+            <input id="shareUrl" readonly />
+            <button id="copyLinkBtn" class="icon-button secondary" type="button" aria-label="复制链接" title="复制链接">
+              <span data-icon="copy"></span>
+            </button>
+            <button id="nativeShareBtn" class="icon-button secondary" type="button" aria-label="系统分享" title="系统分享">
+              <span data-icon="share"></span>
+            </button>
+          </div>
+          <p id="shareHint" class="share-hint">如果这里显示的是 localhost，手机需要把 localhost 换成电脑的局域网 IP。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="authorDialog" class="record-dialog author-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="authorDialogTitle">
+      <div class="dialog-head author-dialog-head">
+        <div>
+          <p class="eyebrow">About Author</p>
+          <h3 id="authorDialogTitle">联系作者</h3>
+        </div>
+        <button class="icon-button ghost" type="button" id="closeAuthorDialogBtn" aria-label="关闭" title="关闭">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <div class="author-content">
+        <div class="author-badge" aria-hidden="true">B</div>
+        <p>
+          本软件由 RicardoBAI 开发,如有疑问，请联系作者<a href="mailto:a1623444091@163.com">a1623444091@163.com</a>，代码已开源，地址：<a href="https://gitee.com/git_bai/autumn-recruitment-app" target="_blank" rel="noreferrer">https://gitee.com/git_bai/autumn-recruitment-app</a>
+        </p>
+      </div>
+    </section>
+
+    <section id="importantReminderDialog" class="record-dialog reminder-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="importantReminderTitle">
+      <div class="dialog-head reminder-dialog-head">
+        <div>
+          <p class="eyebrow">Important Reminder</p>
+          <h3 id="importantReminderTitle">重要提醒</h3>
+        </div>
+        <button class="icon-button ghost" type="button" id="closeImportantReminderBtn" aria-label="关闭" title="关闭">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <div class="reminder-dialog-body">
+        <div class="reminder-hero">
+          <span data-icon="alert"></span>
+          <div>
+            <strong>接下来 12 小时内有重要事项</strong>
+            <p>这些投递记录需要优先处理，比如在线测评、笔试、确认面试时间。</p>
+          </div>
+        </div>
+        <div id="importantReminderList" class="reminder-list"></div>
+      </div>
+    </section>
+
+    <section id="actionConfirmDialog" class="record-dialog action-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="actionConfirmTitle">
+      <div class="dialog-head action-dialog-head">
+        <div>
+          <p class="eyebrow">Status Flow</p>
+          <h3 id="actionConfirmTitle">确认操作</h3>
+        </div>
+      </div>
+      <div class="action-dialog-body">
+        <div class="action-dialog-icon">
+          <span data-icon="alert"></span>
+        </div>
+        <p id="actionConfirmMessage">确认继续吗？</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="text-button" type="button" id="actionCancelBtn">取消</button>
+        <button class="primary-button" type="button" id="actionConfirmBtn">
+          <span data-icon="check"></span>
+          确认
+        </button>
+      </div>
+    </section>
+
+    <section id="statusDeadlineDialog" class="record-dialog deadline-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="statusDeadlineTitle">
+      <div class="dialog-head deadline-dialog-head">
+        <div>
+          <p class="eyebrow">Required Deadline</p>
+          <h3 id="statusDeadlineTitle">设置截止时间</h3>
+        </div>
+      </div>
+      <div class="deadline-dialog-body">
+        <p id="statusDeadlineMessage">这个状态需要设置一个截止时间，用来触发强提醒。</p>
+        <label>
+          <span>截止日期时间</span>
+          <input id="statusDeadlineInput" type="datetime-local" />
+        </label>
+        <label>
+          <span>提醒备注</span>
+          <input id="statusDeadlineNoteInput" maxlength="120" placeholder="例如：在线测评、笔试、面试确认" />
+        </label>
+        <p id="statusDeadlineError" class="form-error" role="alert"></p>
+      </div>
+      <div class="dialog-actions">
+        <button class="text-button" type="button" id="statusDeadlineCancelBtn">取消</button>
+        <button class="primary-button" type="button" id="statusDeadlineConfirmBtn">
+          <span data-icon="check"></span>
+          保存截止时间
+        </button>
+      </div>
+    </section>
+
+    <section id="dueStatusDialog" class="record-dialog due-status-dialog hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dueStatusTitle">
+      <div class="dialog-head action-dialog-head">
+        <div>
+          <p class="eyebrow">Check Result</p>
+          <h3 id="dueStatusTitle">选择新的状态</h3>
+        </div>
+      </div>
+      <div class="due-status-body">
+        <p id="dueStatusMessage">这条记录现在进入哪个阶段？</p>
+        <div class="due-status-options">
+          <button class="status-choice-button" type="button" data-due-status="待测评">待测评</button>
+          <button class="status-choice-button" type="button" data-due-status="待笔试">待笔试</button>
+          <button class="status-choice-button" type="button" data-due-status="待面试">待面试</button>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="text-button" type="button" id="dueStatusCancelBtn">取消</button>
+      </div>
+    </section>
+
+    <template id="emptyStateTemplate">
+      <div class="empty-state">
+        <div class="empty-icon"><span data-icon="inbox"></span></div>
+        <h3>还没有匹配记录</h3>
+        <p>调整筛选，或添加一条新的投递记录。</p>
+      </div>
+    </template>
+
+    <script>
+      window.__trackerOpenRecordFallback = function () {
+        var dialog = document.getElementById("recordDialog");
+        var backdrop = document.getElementById("modalBackdrop");
+        if (!dialog) return;
+        dialog.classList.remove("hidden");
+        dialog.classList.add("is-open");
+        dialog.setAttribute("aria-hidden", "false");
+        if (backdrop) backdrop.classList.remove("hidden");
+        document.body.classList.add("modal-open");
+      };
+      window.__trackerCloseRecordFallback = function () {
+        var dialog = document.getElementById("recordDialog");
+        var backdrop = document.getElementById("modalBackdrop");
+        if (!dialog) return;
+        dialog.classList.remove("is-open");
+        dialog.classList.add("hidden");
+        dialog.setAttribute("aria-hidden", "true");
+        if (backdrop) backdrop.classList.add("hidden");
+        document.body.classList.remove("modal-open");
+      };
+    </script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
